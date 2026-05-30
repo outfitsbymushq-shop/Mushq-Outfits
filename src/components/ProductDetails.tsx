@@ -1,0 +1,396 @@
+import React, { useState } from 'react';
+import { ChevronLeft, MessageSquare, ShieldCheck, Sparkles, MapPin, Ruler, HelpCircle, Check } from 'lucide-react';
+import { Product, Inquiry } from '../types';
+
+interface ProductDetailsProps {
+  product: Product;
+  onGoBack: () => void;
+  onAddInquiry: (inquiry: Omit<Inquiry, 'id' | 'date'>) => void;
+}
+
+export default function ProductDetails({
+  product,
+  onGoBack,
+  onAddInquiry
+}: ProductDetailsProps) {
+  const [activeImage, setActiveImage] = useState(product.images[0]);
+  const [selectedSize, setSelectedSize] = useState<string>(product.sizeInfo?.[0] || 'Unstitched');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  
+  // Custom stitching parameters
+  const [bustSize, setBustSize] = useState('');
+  const [shirtLength, setShirtLength] = useState('');
+  const [waistSize, setWaistSize] = useState('');
+  const [trouserLength, setTrouserLength] = useState('');
+  const [showStitchingForm, setShowStitchingForm] = useState(false);
+  
+  const [orderPlaced, setOrderPlaced] = useState(false);
+
+  // Accordion triggers
+  const [activeTab, setActiveTab] = useState<'fabric' | 'sizing' | 'delivery'>('fabric');
+
+  const hasSale = !!product.salePrice && product.salePrice < product.price;
+  const currentPrice = hasSale ? product.salePrice! : product.price;
+
+  const handleSizeChange = (size: string) => {
+    setSelectedSize(size);
+    if (size.toLowerCase().includes('custom') || size.toLowerCase().includes('stitch')) {
+      setShowStitchingForm(true);
+    } else {
+      setShowStitchingForm(false);
+    }
+  };
+
+  const handlePlaceOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerName.trim()) {
+      alert('Please provide your name to generate the WhatsApp order sheet.');
+      return;
+    }
+
+    const priceText = `Rs. ${currentPrice.toLocaleString()}`;
+    
+    // Construct WhatsApp message content
+    let message = `Assalamualaikum,
+I want to order this product from Mushq Outfits.
+
+Product: ${product.title}
+Price: ${priceText}
+SKU/Product ID: ${product.sku}
+Fabric: ${product.fabric}
+Selected Size: ${selectedSize}`;
+
+    if (showStitchingForm) {
+      message += `\n
+--- Custom Stitching Measurements ---
+- Bust: ${bustSize || 'Standard'} inches
+- Shirt Length: ${shirtLength || 'Standard'} inches
+- Waist: ${waistSize || 'Standard'} inches
+- Trouser Length: ${trouserLength || 'Standard'} inches`;
+    }
+
+    message += `\n
+Customer Name: ${customerName}`;
+    if (customerPhone) {
+      message += `\nPhone: ${customerPhone}`;
+    }
+    
+    message += `\n\nWebsite: Mushq Outfits Karachi\nThank you!`;
+
+    // Encode text
+    const encodedText = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/923020038010?text=${encodedText}`;
+
+    // Add Inquiry to Database Log
+    onAddInquiry({
+      customerName: customerName,
+      customerPhone: customerPhone || 'WhatsApp Client',
+      productTitle: product.title,
+      price: priceText,
+      sku: product.sku
+    });
+
+    setOrderPlaced(true);
+
+    // Open WhatsApp
+    window.open(whatsappUrl, '_blank');
+  };
+
+  return (
+    <div id="product-detail-page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      
+      {/* Back to Shop Nav bar */}
+      <button
+        onClick={onGoBack}
+        id="btn-back-to-shop"
+        className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-950 hover:text-gold-600 mb-8 cursor-pointer select-none transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        <span>Back to All Collections</span>
+      </button>
+
+      {/* Main showcase card columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 bg-[#fff] border border-cream-100 rounded-2xl p-6 md:p-10 shadow-sm">
+        
+        {/* LEFT COLUMN: Gallery View (5 cols on lg) */}
+        <div className="lg:col-span-6 flex flex-col gap-4">
+          {/* Active Primary Showcase image */}
+          <div className="relative aspect-[3/4] bg-cream-50 rounded-xl overflow-hidden border border-cream-100 group">
+            <img
+              src={activeImage}
+              alt={product.title}
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+            />
+            {hasSale && (
+              <span className="absolute top-4 left-4 bg-rose-700 text-[#fff] text-[10px] font-extrabold tracking-widest px-3 py-1.5 rounded uppercase">
+                SALE ACTIVED
+              </span>
+            )}
+            <span className="absolute bottom-4 right-4 bg-emerald-950/80 backdrop-blur-sm text-cream-50 text-[10px] tracking-wide px-3 py-1 bg-opacity-70 rounded-full font-mono">
+              SKU: {product.sku}
+            </span>
+          </div>
+
+          {/* Thumbnails grid */}
+          <div className="flex gap-3 overflow-x-auto py-1">
+            {product.images.map((img, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveImage(img)}
+                className={`relative aspect-[3/4] w-20 rounded-lg overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                  activeImage === img ? 'border-gold-500 scale-95 shadow-md' : 'border-cream-100 hover:border-gold-300'
+                }`}
+              >
+                <img src={img} alt={`${product.title} thumb ${idx}`} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Interactive Details (6 cols on lg) */}
+        <div className="lg:col-span-6 flex flex-col gap-6 justify-between">
+          <div>
+            {/* Category / Fabric indicator */}
+            <div className="flex items-center gap-2 text-xs text-gold-600 font-bold uppercase tracking-widest">
+              <span>{product.category.replace('-', ' ')}</span>
+              <span>•</span>
+              <span className="text-emerald-900 border-b border-gold-300 pb-0.5">{product.fabric}</span>
+            </div>
+
+            {/* Title */}
+            <h1 className="text-2xl md:text-4xl text-emerald-950 font-bold mt-3 mb-4 font-serif leading-tight">
+              {product.title}
+            </h1>
+
+            {/* Price Tags */}
+            <div className="flex items-center gap-4 py-3 px-4 bg-cream-50 rounded-xl border border-cream-100 w-fit mb-6">
+              {hasSale ? (
+                <>
+                  <span className="text-2xl font-bold text-rose-800 font-mono">
+                    Rs. {product.salePrice!.toLocaleString('en-PK')}
+                  </span>
+                  <span className="text-sm text-neutral-400 line-through font-mono">
+                    Rs. {product.price.toLocaleString('en-PK')}
+                  </span>
+                  <span className="text-xs bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded">
+                    Save Rs. {(product.price - product.salePrice!).toLocaleString('en-PK')}
+                  </span>
+                </>
+              ) : (
+                <span className="text-2xl font-bold text-emerald-950 font-mono">
+                  Rs. {product.price.toLocaleString('en-PK')}
+                </span>
+              )}
+            </div>
+
+            {/* Product Narrative description block */}
+            <p className="text-sm text-neutral-600 leading-relaxed mb-6 font-sans">
+              {product.description}
+            </p>
+
+            {/* Interactive Tabbed documentation row */}
+            <div className="border-t border-b border-cream-100 py-2 my-6">
+              <div className="flex gap-4 border-b border-cream-100/50 pb-2 mb-3 text-xs font-bold tracking-wider uppercase text-neutral-400">
+                <button
+                  onClick={() => setActiveTab('fabric')}
+                  className={`pb-1 cursor-pointer hover:text-emerald-950 ${activeTab === 'fabric' ? 'text-emerald-950 border-b-2 border-gold-500' : ''}`}
+                >
+                  🧵 Fabric Details
+                </button>
+                <button
+                  onClick={() => setActiveTab('sizing')}
+                  className={`pb-1 cursor-pointer hover:text-emerald-950 ${activeTab === 'sizing' ? 'text-emerald-950 border-b-2 border-gold-500' : ''}`}
+                >
+                  📐 Sizing Charts
+                </button>
+                <button
+                  onClick={() => setActiveTab('delivery')}
+                  className={`pb-1 cursor-pointer hover:text-emerald-950 ${activeTab === 'delivery' ? 'text-emerald-950 border-b-2 border-gold-500' : ''}`}
+                >
+                  📦 Delivery Info
+                </button>
+              </div>
+
+              {activeTab === 'fabric' && (
+                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn">
+                  <p><strong>Primary Fabric:</strong> {product.fabric}</p>
+                  <p><strong>Thread Craftsmanship:</strong> Fine quality handcraft, zari embellishments, tilla borders, Gota work, and sequins matching.</p>
+                  <p><strong>Components Details:</strong> 3-Piece complete dress (includes stitched/unstitched inner lining slip, matching styled trousers, and premium customized premium dupatta).</p>
+                </div>
+              )}
+
+              {activeTab === 'sizing' && (
+                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn">
+                  <p>We support a complete standard sizing chart (Standard PK sizing guidelines):</p>
+                  <div className="grid grid-cols-4 gap-2 text-center border-t border-cream-100 pt-2 font-mono">
+                    <span className="bg-cream-50 p-1.5 rounded"><strong>S:</strong> Chest 36"</span>
+                    <span className="bg-cream-50 p-1.5 rounded"><strong>M:</strong> Chest 40"</span>
+                    <span className="bg-cream-50 p-1.5 rounded"><strong>L:</strong> Chest 44"</span>
+                    <span className="bg-cream-50 p-1.5 rounded"><strong>XL:</strong> Chest 48"</span>
+                  </div>
+                  <p className="text-[11px] text-[#ab8215] mt-1 italic">★ Custom stitching is completed by expert tailors to guarantee the absolute best fit according to your customized chest and lengths.</p>
+                </div>
+              )}
+
+              {activeTab === 'delivery' && (
+                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn">
+                  <p><strong>Nationwide Shipping:</strong> Free Cash on Delivery (COD) services available safely across Pakistan.</p>
+                  <p><strong>Fulfillment Duration:</strong> 2-3 working days for unstitched suits. Premium customized orders require 10-14 working days for immaculate stitching.</p>
+                  <p><strong>Boutique Packaging:</strong> Delivered inside premium Mushq Outfits luxury hard-carton packaging box, containing care tags.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* WHATSAPP ORDER SHEET FORM */}
+          <form onSubmit={handlePlaceOrder} className="bg-[#faf9f5] border border-gold-200/50 rounded-xl p-5 shadow-inner">
+            <h3 className="text-sm font-serif font-bold text-emerald-950 uppercase tracking-widest flex items-center gap-2 mb-4 border-b border-cream-100 pb-2">
+              <Sparkles className="w-4 h-4 text-gold-500" />
+              <span>Instant WhatsApp Checkout</span>
+            </h3>
+
+            {/* Size checklist */}
+            <div className="mb-4">
+              <label className="block text-xs font-bold text-neutral-700 tracking-wide uppercase mb-2">
+                1. Select Size *
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(product.sizeInfo || ['Unstitched', 'S', 'M', 'L', 'XL', 'Custom Stitching']).map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => handleSizeChange(size)}
+                    className={`px-3 py-2 rounded text-xs font-semibold tracking-wide border cursor-pointer transition-all ${
+                      selectedSize === size
+                        ? 'bg-emerald-950 border-emerald-950 text-cream-50 shadow'
+                        : 'bg-[#fff] border-cream-200 text-neutral-700 hover:border-gold-300'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Sizing Measurement Form */}
+            {showStitchingForm && (
+              <div className="bg-[#fff] border border-gold-300/40 rounded-lg p-4 mb-4 grid grid-cols-2 gap-3.5 animate-in slide-in-from-top-4 duration-300">
+                <div className="col-span-2 flex items-center gap-2 mb-1 border-b border-cream-100 pb-1">
+                  <Ruler className="w-3.5 h-3.5 text-[#ab8215]" />
+                  <span className="text-[11px] font-bold text-gold-700 uppercase tracking-wider">Stitching Measurements (Inches)</span>
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-semibold text-neutral-500 mb-1">Bust Circumference</label>
+                  <input
+                    type="text"
+                    placeholder='e.g. 36"'
+                    value={bustSize}
+                    onChange={(e) => setBustSize(e.target.value)}
+                    className="w-full bg-cream-50 border border-cream-200 rounded px-2.5 py-1.5 text-xs text-neutral-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-semibold text-neutral-500 mb-1">Kameez/Shirt Length</label>
+                  <input
+                    type="text"
+                    placeholder='e.g. 42"'
+                    value={shirtLength}
+                    onChange={(e) => setShirtLength(e.target.value)}
+                    className="w-full bg-cream-50 border border-cream-200 rounded px-2.5 py-1.5 text-xs text-neutral-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-semibold text-neutral-500 mb-1">Waist Sizing</label>
+                  <input
+                    type="text"
+                    placeholder='e.g. 30"'
+                    value={waistSize}
+                    onChange={(e) => setWaistSize(e.target.value)}
+                    className="w-full bg-cream-50 border border-cream-200 rounded px-2.5 py-1.5 text-xs text-neutral-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-semibold text-neutral-500 mb-1">Trouser Sizing Length</label>
+                  <input
+                    type="text"
+                    placeholder='e.g. 38"'
+                    value={trouserLength}
+                    onChange={(e) => setTrouserLength(e.target.value)}
+                    className="w-full bg-cream-50 border border-cream-200 rounded px-2.5 py-1.5 text-xs text-neutral-800"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Customer Details */}
+            <div className="space-y-3.5 mb-5 mb-5.5">
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 tracking-wide uppercase mb-1.5">
+                  2. Full Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Amna Shah"
+                  required
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full bg-[#fff] border border-cream-200 rounded-lg px-3.5 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 tracking-wide uppercase mb-1.5">
+                  3. Phone Number (Optional)
+                </label>
+                <input
+                  type="tel"
+                  placeholder="e.g. +92 300 1234567"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="w-full bg-[#fff] border border-cream-200 rounded-lg px-3.5 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800"
+                />
+              </div>
+            </div>
+
+            {/* ORDER SUBMIT BUTTON */}
+            {product.stockStatus === 'outofstock' ? (
+              <button
+                type="button"
+                disabled
+                className="w-full bg-neutral-400 text-cream-50 font-bold uppercase py-3.5 rounded-lg text-xs tracking-widest cursor-not-allowed text-center transition-all"
+              >
+                PRODUCT TEMPORARILY SOLD OUT
+              </button>
+            ) : (
+              <button
+                type="submit"
+                id="btn-whatsapp-order"
+                className="w-full bg-emerald-900 hover:bg-emerald-950 active:scale-[0.98] text-[#fff] font-bold uppercase py-4 rounded-lg text-xs tracking-[0.18em] flex items-center justify-center gap-3 shadow-md hover:shadow-lg transition-all cursor-pointer"
+              >
+                <MessageSquare className="w-4.5 h-4.5 text-gold-400" />
+                <span>ORDER ON WHATSAPP SECURELY</span>
+              </button>
+            )}
+
+            {orderPlaced && (
+              <div className="mt-4 p-3.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2.5 text-emerald-800 text-xs py-2 animated slideInFromBottom">
+                <Check className="w-4 h-4 text-emerald-600 font-extrabold" />
+                <span>Bespoke Order chat initialized on WhatsApp. Logs tracked inside client history!</span>
+              </div>
+            )}
+          </form>
+
+          {/* Customer Trust indicator */}
+          <div className="flex justify-around items-center text-neutral-400 text-[10px] uppercase font-bold tracking-widest mt-4">
+            <span className="flex items-center gap-1">🛡️ SECURED COD VIA CORRESPONDENT</span>
+            <span>•</span>
+            <span className="flex items-center gap-1">🌸 100% GENUINE SILKS & LAWNS</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
