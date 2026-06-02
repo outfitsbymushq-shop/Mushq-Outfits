@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   Heart, Trash2, Eye, Sparkles, ChevronLeft, ChevronRight, 
   MessageSquare, Star, ArrowRight, Instagram, Facebook, Mail, 
-  Check, Phone, MapPin, Search, Grid, List, SlidersHorizontal, Info, ShoppingBag
+  Check, Phone, MapPin, Search, Grid, List, SlidersHorizontal, Info, ShoppingBag,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Product, Category, Banner, Inquiry, Review } from './types';
+import { Product, Category, Banner, Inquiry, Review, CartItem } from './types';
 import { 
   getProducts, getCategories, getBanners, getSEO, getReviews,
   addInquiry, incrementVisitors 
@@ -27,6 +28,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<'home' | 'shop' | 'details' | 'admin'>('home');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Search and Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,6 +38,15 @@ export default function App() {
   // Customer wishlist storage
   const [wishlist, setWishlist] = useState<Product[]>([]);
   const [wishlistOpen, setWishlistOpen] = useState(false);
+
+  // Customer cart storage
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
+
+  // Checkout Form metadata
+  const [cartName, setCartName] = useState('');
+  const [cartPhone, setCartPhone] = useState('');
+  const [cartAddress, setCartAddress] = useState('');
 
   // Home Hero Banner slider state
   const [activeSlide, setActiveSlide] = useState(0);
@@ -61,6 +72,12 @@ export default function App() {
     if (savedWish) {
       setWishlist(JSON.parse(savedWish));
     }
+
+    // Load cart
+    const savedCart = localStorage.getItem('mushq_cart');
+    if (savedCart) {
+      setCart(JSON.parse(savedCart));
+    }
   }, []);
 
   // Slider automated transition timer
@@ -71,6 +88,38 @@ export default function App() {
     }, 5500);
     return () => clearInterval(interval);
   }, [banners]);
+
+  // Client SPA Routing for direct /admin URL access
+  useEffect(() => {
+    const checkAdminRoute = () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      if (path === '/admin' || hash === '#/admin' || hash === '#admin') {
+        setCurrentView('admin');
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+    };
+
+    checkAdminRoute();
+    window.addEventListener('popstate', checkAdminRoute);
+    window.addEventListener('hashchange', checkAdminRoute);
+    return () => {
+      window.removeEventListener('popstate', checkAdminRoute);
+      window.removeEventListener('hashchange', checkAdminRoute);
+    };
+  }, []);
+
+  // Lock document body scroll when any drawer is active
+  useEffect(() => {
+    if (mobileMenuOpen || wishlistOpen || cartOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen, wishlistOpen, cartOpen]);
 
   // Handle wishlist mutations
   const handleToggleWishlist = (product: Product) => {
@@ -88,6 +137,58 @@ export default function App() {
     const updated = wishlist.filter(item => item.id !== id);
     setWishlist(updated);
     localStorage.setItem('mushq_wishlist', JSON.stringify(updated));
+  };
+
+  // Complete Add to Cart systems
+  const handleAddToCart = (product: Product, quantity: number, size: string, customMeasurements?: any) => {
+    setCart((prevCart) => {
+      const cartItemId = `${product.id}-${size}`;
+      const existingIdx = prevCart.findIndex(item => item.id === cartItemId);
+      let updated;
+      if (existingIdx > -1) {
+        updated = [...prevCart];
+        updated[existingIdx].quantity += quantity;
+      } else {
+        updated = [
+          ...prevCart,
+          {
+            id: cartItemId,
+            product,
+            quantity,
+            selectedSize: size,
+            customMeasurements
+          }
+        ];
+      }
+      localStorage.setItem('mushq_cart', JSON.stringify(updated));
+      return updated;
+    });
+    setCartOpen(true); // Auto reveal the cart beautifully
+  };
+
+  const handleUpdateCartQty = (itemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      handleRemoveFromCart(itemId);
+      return;
+    }
+    setCart((prevCart) => {
+      const updated = prevCart.map(item => item.id === itemId ? { ...item, quantity } : item);
+      localStorage.setItem('mushq_cart', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleRemoveFromCart = (itemId: string) => {
+    setCart((prevCart) => {
+      const updated = prevCart.filter(item => item.id !== itemId);
+      localStorage.setItem('mushq_cart', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleClearCart = () => {
+    setCart([]);
+    localStorage.removeItem('mushq_cart');
   };
 
   // Add inquiry checkout triggered via WhatsApp form
@@ -144,7 +245,10 @@ export default function App() {
         }}
         wishlistCount={wishlist.length}
         onOpenWishlist={() => setWishlistOpen(true)}
-        isAdminLoggedIn={true} // autoconfigured active sandbox indicator
+        cartCount={cart.reduce((total, item) => total + item.quantity, 0)}
+        onOpenCart={() => setCartOpen(true)}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
       />
 
       <main className="flex-1">
@@ -208,14 +312,14 @@ export default function App() {
                         initial={{ y: 20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.5, duration: 0.6 }}
-                        className="flex gap-4 mt-8"
+                        className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8 w-full sm:w-auto"
                       >
                         <button
                           onClick={() => {
                             setActiveCategory('all');
                             setCurrentView('shop');
                           }}
-                          className="bg-gold-500 hover:bg-gold-600 font-bold text-emerald-950 py-3.5 px-8 rounded-none text-xs tracking-[0.25em] uppercase transition-all select-none cursor-pointer text-center"
+                          className="bg-gold-500 hover:bg-gold-600 font-bold text-emerald-950 py-3 px-5 sm:py-3.5 sm:px-8 rounded-none text-[11px] sm:text-xs tracking-[0.2em] sm:tracking-[0.25em] uppercase transition-all select-none cursor-pointer text-center w-full sm:w-auto"
                         >
                           Explore Brand
                         </button>
@@ -224,7 +328,7 @@ export default function App() {
                             setActiveCategory('party-wear');
                             setCurrentView('shop');
                           }}
-                          className="bg-transparent hover:bg-[#fff]/10 border border-[#fff] font-bold text-[#fff] py-3.5 px-8 rounded-none text-xs tracking-[0.25em] uppercase transition-all select-none cursor-pointer text-center"
+                          className="bg-transparent hover:bg-[#fff]/10 border border-[#fff] font-bold text-[#fff] py-3 px-5 sm:py-3.5 sm:px-8 rounded-none text-[11px] sm:text-xs tracking-[0.2em] sm:tracking-[0.25em] uppercase transition-all select-none cursor-pointer text-center w-full sm:w-auto"
                         >
                           Party Wear
                         </button>
@@ -512,11 +616,13 @@ export default function App() {
                 {/* Categories filtering links */}
                 <div>
                   <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-3">Filter by Collection</label>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex md:flex-col overflow-x-auto md:overflow-x-visible -mx-2 px-2 md:mx-0 md:px-0 gap-2 pb-2 md:pb-0 scrollbar-none select-none">
                     <button
                       onClick={() => setActiveCategory('all')}
-                      className={`text-left text-xs font-semibold uppercase tracking-wider pl-3 py-1 border-l-2 ${
-                        activeCategory === 'all' ? 'border-[#ab8215] text-[#ab8215]' : 'border-transparent text-neutral-700'
+                      className={`text-center md:text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap shrink-0 px-3.5 py-2 md:py-1 md:px-0 md:bg-transparent md:border-l-2 rounded-full md:rounded-none transition-all ${
+                        activeCategory === 'all' 
+                          ? 'bg-emerald-950 text-[#fff] border-emerald-950 md:border-[#ab8215] md:text-[#ab8215] font-bold' 
+                          : 'bg-cream-100/80 border-transparent text-neutral-700 hover:text-gold-600 md:bg-transparent'
                       }`}
                     >
                       ✨ All Closets
@@ -525,8 +631,10 @@ export default function App() {
                       <button
                         key={c.id}
                         onClick={() => setActiveCategory(c.slug)}
-                        className={`text-left text-xs font-semibold pl-3 py-1 border-l-2 ${
-                          activeCategory === c.slug ? 'border-[#ab8215] text-[#ab8215]' : 'border-transparent text-neutral-600 hover:text-gold-600'
+                        className={`text-center md:text-left text-xs font-semibold whitespace-nowrap shrink-0 px-3.5 py-2 md:py-1 md:px-0 md:bg-transparent md:border-l-2 rounded-full md:rounded-none transition-all ${
+                          activeCategory === c.slug 
+                            ? 'bg-emerald-950 text-[#fff] border-emerald-950 md:border-[#ab8215] md:text-[#ab8215] font-bold' 
+                            : 'bg-cream-100/80 border-transparent text-neutral-600 hover:text-gold-600 md:bg-transparent'
                         }`}
                       >
                         ⚡ {c.name}
@@ -627,6 +735,7 @@ export default function App() {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onAddInquiry={handleNewInquiryLog}
+            onAddToCart={handleAddToCart}
           />
         )}
 
@@ -651,7 +760,7 @@ export default function App() {
           {/* Backdrop screen */}
           <div className="fixed inset-0 bg-[#000]/40 backdrop-blur-sm transition-opacity" onClick={() => setWishlistOpen(false)} />
           
-          <div className="fixed inset-y-0 right-0 max-w-full pl-10 flex">
+          <div className="fixed inset-y-0 right-0 max-w-full pl-3 sm:pl-10 flex">
             <div className="w-screen max-w-sm bg-[#faf9f5] shadow-2xl relative flex flex-col h-full border-l border-cream-100 animate-in slide-in-from-right duration-300">
               <div className="px-6 py-5 bg-emerald-950 text-[#fff] flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -721,6 +830,367 @@ export default function App() {
                   >
                     👜 Back to Closet Store
                   </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SLA INTERACTIVE MOBILE NAVIGATION DRAWER */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[9999] flex justify-start">
+          {/* Backdrop overlay */}
+          <div 
+            className="fixed inset-0 bg-[#000]/60 backdrop-blur-xs transition-opacity duration-300 cursor-pointer" 
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          
+          {/* Main off-canvas sheet panel */}
+          <div className="relative flex flex-col w-[85%] sm:w-[80%] max-w-sm bg-[#faf9f5] h-full shadow-2xl border-r border-cream-150 overflow-hidden pointer-events-auto z-10 transition-all duration-300 animate-in slide-in-from-left">
+            
+            {/* Pinned top block info */}
+            <div className="p-6 pb-4 border-b border-cream-100 flex justify-between items-center bg-[#faf9f5] shrink-0">
+              <div 
+                className="flex flex-col select-none cursor-pointer" 
+                onClick={() => {
+                  setActiveCategory('all');
+                  setCurrentView('home');
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <span className="text-xl font-serif font-bold tracking-[0.16em] text-emerald-950">MUSHQ</span>
+                <span className="text-[8px] tracking-[0.4em] text-gold-600 font-bold uppercase -mt-0.5">OUTFITS</span>
+              </div>
+              <button 
+                onClick={() => setMobileMenuOpen(false)} 
+                className="p-2.5 text-emerald-950 bg-cream-100/80 hover:bg-cream-150 rounded-full cursor-pointer focus:outline-none transition-all active:scale-90 flex items-center justify-center"
+                aria-label="Close menu"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            {/* Pinned Search bar block */}
+            <div className="px-6 py-4 border-b border-cream-100/50 bg-[#faf9f5] shrink-0">
+              <div className="relative">
+                <Search className="w-4 h-4 text-emerald-800 absolute left-3.5 top-3.5" />
+                <input
+                  type="text"
+                  placeholder="Search outfits..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    if (currentView !== 'shop') {
+                      setCurrentView('shop');
+                    }
+                  }}
+                  className="w-full bg-[#fff] border border-cream-200 rounded-lg pl-10 pr-4 py-3 text-xs text-emerald-950 focus:outline-none focus:ring-1 focus:ring-gold-400 font-sans shadow-xs"
+                />
+              </div>
+            </div>
+
+            {/* Smooth momentum scrolling collections content area */}
+            <div className="flex-grow overflow-y-auto overscroll-behavior-contain scroll-smooth p-6 space-y-6 scrollbar-none">
+              
+              {/* Core Links section */}
+              <div>
+                <span className="text-[9.5px] tracking-[0.25em] font-extrabold text-gold-600 uppercase mb-3 block">Collections</span>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={() => {
+                      setCurrentView('home');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`text-left text-xs font-bold uppercase tracking-wider py-3 px-3.5 h-11 rounded-md transition-all flex items-center gap-2.5 ${currentView === 'home' ? 'bg-gold-500/10 text-gold-700' : 'text-emerald-950 hover:bg-cream-100/50'}`}
+                  >
+                    <span>🏡</span>
+                    <span>Home Page</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setActiveCategory('all');
+                      setCurrentView('shop');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`text-left text-xs font-bold uppercase tracking-wider py-3 px-3.5 h-11 rounded-md transition-all flex items-center gap-2.5 ${currentView === 'shop' && activeCategory === 'all' ? 'bg-gold-500/10 text-gold-700' : 'text-emerald-950 hover:bg-cream-100/50'}`}
+                  >
+                    <span>👜</span>
+                    <span>View All Outfits</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Collections classification block lists */}
+              <div className="pt-2">
+                <span className="text-[9.5px] tracking-[0.25em] font-extrabold text-gold-600 uppercase mb-3 block">Filter by Fabric & Collection</span>
+                <div className="flex flex-col gap-1 border-l border-cream-150 pl-1 ml-1">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        setActiveCategory(cat.slug);
+                        setCurrentView('shop');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`text-left text-xs font-semibold tracking-wide py-3 px-4 h-11 rounded-md transition-all flex items-center justify-between ${
+                        activeCategory === cat.slug && currentView === 'shop' 
+                          ? 'bg-gold-500/10 text-gold-700 font-bold' 
+                          : 'text-neutral-700 hover:bg-cream-100/30'
+                      }`}
+                    >
+                      <span className="truncate">✦ {cat.name}</span>
+                      <span className="text-[9.5px] font-mono text-neutral-400 shrink-0 ml-2">→</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Contact panel supporting quick action */}
+              <div className="border-t border-cream-150 pt-6 flex flex-col gap-3 pb-4">
+                <div className="flex items-center gap-2.5 text-xs text-neutral-600 font-medium bg-[#fff] border border-cream-100 p-3 h-12 rounded-lg shadow-2xs">
+                  <MessageSquare className="w-4 h-4 text-emerald-800 shrink-0" />
+                  <span className="font-semibold text-[11px] font-mono">+92 302 0038010</span>
+                </div>
+                <p className="text-[9.5px] text-neutral-400 font-sans leading-relaxed select-none">
+                  Contact our customer support team live on WhatsApp for boutique consultation or direct order issues.
+                </p>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* SLA INTERACTIVE CART DRAWER SIDEBAR */}
+      {cartOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden bg-transparent">
+          {/* Backdrop screen */}
+          <div className="fixed inset-0 bg-[#000]/40 backdrop-blur-sm transition-opacity" onClick={() => setCartOpen(false)} />
+          
+          <div className="fixed inset-y-0 right-0 max-w-full pl-3 sm:pl-10 flex text-xs">
+            <div className="w-screen max-w-md bg-[#faf9f5] shadow-2xl relative flex flex-col h-full border-l border-cream-100 animate-in slide-in-from-right duration-300">
+              <div className="px-6 py-5 bg-emerald-950 text-[#fff] flex items-center justify-between shadow-md">
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5 text-gold-400" />
+                  <span className="font-serif font-bold text-md tracking-wider uppercase select-none">My Luxury Bag ({cart.reduce((t, i) => t + i.quantity, 0)})</span>
+                </div>
+                <button onClick={() => setCartOpen(false)} className="p-2 bg-emerald-900 rounded-full cursor-pointer text-[#fff] font-mono hover:bg-emerald-800 transition-all select-none">✕</button>
+              </div>
+
+              {/* Cart items list scrollable */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scroll">
+                {cart.length === 0 ? (
+                  <div className="text-center text-neutral-400 py-16 space-y-4">
+                    <ShoppingBag className="w-12 h-12 text-cream-250 mx-auto" />
+                    <p className="font-medium font-serif text-sm text-neutral-600 select-none">Your shopping bag is empty</p>
+                    <p className="text-[11px] max-w-xs mx-auto text-neutral-400 leading-relaxed select-none">
+                      Explore our premium embroidered lawns and royal party wear to add your first selection!
+                    </p>
+                    <button 
+                      onClick={() => {
+                        setCurrentView('shop');
+                        setCartOpen(false);
+                      }}
+                      className="mt-4 px-6 py-2.5 bg-emerald-950 text-cream-50 uppercase tracking-widest text-[10px] font-bold transition-all hover:bg-emerald-900 shadow cursor-pointer select-none"
+                    >
+                      Shop Collections
+                    </button>
+                  </div>
+                ) : (
+                  cart.map((item) => {
+                    const price = item.product.salePrice || item.product.price;
+                    return (
+                      <div key={item.id} className="bg-[#fff] border border-cream-100 p-3.5 rounded-lg shadow-xs flex gap-3.5 group relative animate-in zoom-in-95 duration-200">
+                        <img 
+                          src={item.product.images[0]} 
+                          alt={item.product.title} 
+                          referrerPolicy="no-referrer" 
+                          className="w-16 aspect-[3/4] object-cover rounded border border-cream-100 shadow-sm shrink-0" 
+                        />
+                        <div className="flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex justify-between items-start gap-2">
+                              <h4 className="font-bold text-neutral-800 line-clamp-1 font-serif text-xs">{item.product.title}</h4>
+                              <button
+                                onClick={() => handleRemoveFromCart(item.id)}
+                                className="text-rose-500 hover:text-rose-700 cursor-pointer p-0.5"
+                                title="Remove item"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <span className="text-[9px] text-neutral-400 block mt-0.5 uppercase tracking-wide font-mono">SKU: {item.product.sku}</span>
+                            <div className="mt-1 flex flex-wrap gap-1.5 items-center">
+                              <span className="text-[10px] bg-cream-100 text-[#ab8215] font-bold px-1.5 py-0.5 rounded font-mono">
+                                Size: {item.selectedSize}
+                              </span>
+                              {item.customMeasurements && (
+                                <span className="text-[9px] bg-emerald-50 text-emerald-800 border border-emerald-100 px-1 py-0.5 rounded max-w-full truncate font-serif italic" title="Custom stitch measurements provided">
+                                  ✂️ Bespoke stitching
+                                </span>
+                              )}
+                            </div>
+                            
+                            {item.customMeasurements && (
+                              <div className="mt-1.5 p-1.5 bg-cream-50/50 rounded text-[9.5px] text-neutral-500 font-mono grid grid-cols-2 gap-x-2 border border-cream-100">
+                                <span>Bust: {item.customMeasurements.bust}"</span>
+                                <span>Shirt: {item.customMeasurements.shirtLength}"</span>
+                                <span>Waist: {item.customMeasurements.waist}"</span>
+                                <span>Trouser: {item.customMeasurements.trouserLength}"</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between border-t border-cream-50 pt-2 mt-2">
+                            <span className="font-mono font-bold text-emerald-950 text-xs">Rs. {(price * item.quantity).toLocaleString()}</span>
+                            
+                            {/* Quantity buttons */}
+                            <div className="flex items-center border border-cream-150 bg-cream-50/50 rounded overflow-hidden">
+                              <button 
+                                onClick={() => handleUpdateCartQty(item.id, item.quantity - 1)}
+                                className="px-2 py-1 text-neutral-500 hover:bg-cream-100 font-bold transition-all select-none cursor-pointer"
+                              >
+                                -
+                              </button>
+                              <span className="px-2 bg-white font-mono font-bold text-neutral-800 text-[11px] text-center w-6">
+                                {item.quantity}
+                              </span>
+                              <button 
+                                onClick={() => handleUpdateCartQty(item.id, item.quantity + 1)}
+                                className="px-2 py-1 text-neutral-500 hover:bg-cream-100 font-bold transition-all select-none cursor-pointer"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Cart Drawer Checkout Footer section */}
+              {cart.length > 0 && (
+                <div className="bg-cream-100/60 p-5 border-t border-cream-200">
+                  <div className="flex justify-between items-center mb-4 text-xs font-serif font-bold text-emerald-950 border-b border-cream-150 pb-3">
+                    <span className="uppercase tracking-widest text-[10px]">Estimated Cart Subtotal:</span>
+                    <span className="text-sm font-mono tracking-normal">
+                      Rs. {cart.reduce((total, item) => total + ((item.product.salePrice || item.product.price) * item.quantity), 0).toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Checkout Form */}
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!cartName.trim()) {
+                        alert('Please fill in your name to initialize custom checkout.');
+                        return;
+                      }
+
+                      // Build grand message
+                      const totalCartValue = cart.reduce((total, item) => total + ((item.product.salePrice || item.product.price) * item.quantity), 0);
+                      
+                      let message = `Assalamualaikum Mushq Outfits Karachi,\n\nI would like to place an order from my shopping cart.\n\n*Customer Details:*\n- Name: ${cartName}`;
+                      if (cartPhone) {
+                        message += `\n- WhatsApp Contact: ${cartPhone}`;
+                      }
+                      if (cartAddress) {
+                        message += `\n- Shipping Address: ${cartAddress}`;
+                      }
+                      
+                      message += `\n\n*Ordered Items:*\n=============================`;
+                      
+                      cart.forEach((item, index) => {
+                        const price = item.product.salePrice || item.product.price;
+                        message += `\n\n${index + 1}. *${item.product.title}*`;
+                        message += `\n   - SKU: ${item.product.sku}`;
+                        message += `\n   - Sizing: ${item.selectedSize}`;
+                        if (item.customMeasurements) {
+                          message += `\n   - Measurements: Bust: ${item.customMeasurements.bust}", Shirt: ${item.customMeasurements.shirtLength}", Waist: ${item.customMeasurements.waist}", Trouser: ${item.customMeasurements.trouserLength}"`;
+                        }
+                        message += `\n   - Qty: ${item.quantity}`;
+                        message += `\n   - Item Price: Rs. ${price.toLocaleString()}`;
+                        message += `\n   - Link: https://outfitsbymushq.netlify.app/product/${item.product.id}`;
+                      });
+                      
+                      message += `\n\n=============================\n\n*Grand Subtotal:* Rs. ${totalCartValue.toLocaleString()}\n\nThank you!`;
+
+                      // Encode message
+                      const encodedText = encodeURIComponent(message);
+                      const whatsappUrl = `https://wa.me/923020038010?text=${encodedText}`;
+
+                      // Register each item in backend db inquiries
+                      cart.forEach(item => {
+                        addInquiry({
+                          customerName: cartName,
+                          customerPhone: cartPhone || 'WhatsApp Client',
+                          productTitle: `${item.product.title} (Size: ${item.selectedSize})`,
+                          price: `Rs. ${(item.product.salePrice || item.product.price).toLocaleString()} x ${item.quantity}`,
+                          sku: item.product.sku,
+                          productLink: `https://outfitsbymushq.netlify.app/product/${item.product.id}`
+                        });
+                      });
+
+                      // Reset cart
+                      setCart([]);
+                      localStorage.removeItem('mushq_cart');
+                      setCartOpen(false);
+
+                      // Open WhatsApp
+                      window.open(whatsappUrl, '_blank');
+                    }}
+                    className="space-y-3.5 pt-1.5"
+                  >
+                    <span className="block text-[11px] font-bold text-gold-600 tracking-widest uppercase mb-1 flex items-center gap-1 select-none">
+                      <span>✦</span> Handshake Checkout (Cash on Delivery)
+                    </span>
+
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Your Full Name *"
+                        required
+                        value={cartName}
+                        onChange={(e) => setCartName(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="tel"
+                        placeholder="WhatsApp Number"
+                        value={cartPhone}
+                        onChange={(e) => setCartPhone(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800 font-mono"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Shipping Address / City"
+                        required
+                        value={cartAddress}
+                        onChange={(e) => setCartAddress(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800"
+                      />
+                    </div>
+
+                    <p className="text-[9.5px] text-neutral-400 leading-tight select-none">
+                      * Cart orders compile inside your back-office registry. A secure booking sheet launches on WhatsApp automatically.
+                    </p>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-emerald-950 text-cream-50 font-bold tracking-widest text-[11px] py-4 uppercase rounded shadow hover:bg-emerald-900 transition-colors cursor-pointer flex items-center justify-center gap-2 select-none"
+                    >
+                      <MessageSquare className="w-4 h-4 text-gold-400" />
+                      <span>ORDER CART ON WHATSAPP SECURELY</span>
+                    </button>
+                  </form>
                 </div>
               )}
             </div>

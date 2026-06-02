@@ -78,8 +78,8 @@ export default function ProductCard({
           <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-current' : ''}`} />
         </button>
 
-        {/* Action Drawer overlay (Revealed on hover) */}
-        <div className="absolute bottom-4 inset-x-4 flex items-center gap-2 transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-10">
+        {/* Action Drawer overlay (Revealed on hover on desktop only) */}
+        <div className="hidden sm:flex absolute bottom-4 inset-x-4 items-center gap-2 transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-10">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -95,12 +95,12 @@ export default function ProductCard({
       </div>
 
       {/* Product Information Grid */}
-      <div className="p-4 flex flex-col flex-1 bg-[#fff] justify-between border-t border-cream-150">
+      <div className="p-3 sm:p-4 flex flex-col flex-1 bg-[#fff] justify-between border-t border-cream-150">
         <div>
           {/* Collection Name & Fabric tag */}
-          <div className="flex items-center justify-between text-[9px] text-gold-600 font-bold uppercase tracking-widest mb-1.5">
-            <span className="opacity-95">{product.category.replace('-', ' ')}</span>
-            <span className="bg-cream-100 text-[8px] px-1.5 py-0.5 tracking-wider font-sans font-extrabold text-[#064e3b]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[9px] text-gold-600 font-bold uppercase tracking-widest mb-1.5">
+            <span className="opacity-95 truncate max-w-full">{product.category.replace('-', ' ')}</span>
+            <span className="bg-cream-100 text-[8px] px-1.5 py-0.5 tracking-wider font-sans font-extrabold text-[#064e3b] w-fit shrink-0 rounded-xs">
               {product.fabric}
             </span>
           </div>
@@ -115,19 +115,19 @@ export default function ProductCard({
         </div>
 
         {/* Pricing & Order Callout */}
-        <div className="flex items-center justify-between mt-auto pt-2 border-t border-cream-150">
-          <div className="flex items-baseline gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mt-auto pt-2 border-t border-cream-150">
+          <div className="flex flex-wrap items-baseline gap-1">
             {hasSale ? (
-              <>
-                <span className="text-xs font-bold text-rose-800 font-mono">
+              <div className="flex flex-col">
+                <span className="text-[11px] sm:text-xs font-bold text-rose-800 font-mono leading-none">
                   {formatPrice(product.salePrice!)}
                 </span>
-                <span className="text-[10px] text-neutral-400 line-through font-mono">
+                <span className="text-[9.5px] text-neutral-400 line-through font-mono mt-0.5 leading-none">
                   {formatPrice(product.price)}
                 </span>
-              </>
+              </div>
             ) : (
-              <span className="text-xs font-bold text-gold-600 font-mono">
+              <span className="text-[11px] sm:text-xs font-bold text-gold-600 font-mono">
                 {formatPrice(product.price)}
               </span>
             )}
@@ -135,7 +135,7 @@ export default function ProductCard({
           
           <button
             onClick={() => onViewDetails(product.id)}
-            className="text-[9px] uppercase tracking-widest font-bold text-emerald-950 underline underline-offset-4 cursor-pointer hover:text-gold-600"
+            className="text-[9.5px] uppercase tracking-widest font-extrabold text-emerald-950 hover:text-gold-600 bg-cream-50 sm:bg-transparent py-1.5 px-3 sm:p-0 rounded border border-cream-200 sm:border-transparent sm:underline sm:underline-offset-4 cursor-pointer text-center w-full sm:w-auto"
           >
             Order
           </button>

@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { ChevronLeft, MessageSquare, ShieldCheck, Sparkles, MapPin, Ruler, HelpCircle, Check } from 'lucide-react';
+import { ChevronLeft, MessageSquare, ShieldCheck, Sparkles, MapPin, Ruler, HelpCircle, Check, ShoppingBag } from 'lucide-react';
 import { Product, Inquiry } from '../types';
 
 interface ProductDetailsProps {
   product: Product;
   onGoBack: () => void;
   onAddInquiry: (inquiry: Omit<Inquiry, 'id' | 'date'>) => void;
+  onAddToCart: (product: Product, quantity: number, size: string, customMeasurements?: any) => void;
 }
 
 export default function ProductDetails({
   product,
   onGoBack,
-  onAddInquiry
+  onAddInquiry,
+  onAddToCart
 }: ProductDetailsProps) {
   const [activeImage, setActiveImage] = useState(product.images[0]);
   const [selectedSize, setSelectedSize] = useState<string>(product.sizeInfo?.[0] || 'Unstitched');
@@ -50,33 +52,35 @@ export default function ProductDetails({
     }
 
     const priceText = `Rs. ${currentPrice.toLocaleString()}`;
+    const productUrl = `https://outfitsbymushq.netlify.app/product/${product.id}`;
     
-    // Construct WhatsApp message content
+    // Construct WhatsApp message content precisely in the requested template
     let message = `Assalamualaikum,
-I want to order this product from Mushq Outfits.
 
-Product: ${product.title}
-Price: ${priceText}
-SKU/Product ID: ${product.sku}
-Fabric: ${product.fabric}
-Selected Size: ${selectedSize}`;
+I would like to order this product.
+
+Product Name:
+${product.title}
+
+Price:
+${priceText}
+
+Product ID:
+${product.sku}
+
+Product Link:
+${productUrl}`;
 
     if (showStitchingForm) {
-      message += `\n
---- Custom Stitching Measurements ---
-- Bust: ${bustSize || 'Standard'} inches
-- Shirt Length: ${shirtLength || 'Standard'} inches
-- Waist: ${waistSize || 'Standard'} inches
-- Trouser Length: ${trouserLength || 'Standard'} inches`;
+      message += `\n\nMeasurements (Custom Stitching):\n- Bust: ${bustSize || 'Standard'} in\n- Shirt Length: ${shirtLength || 'Standard'} in\n- Waist: ${waistSize || 'Standard'} in\n- Trouser Length: ${trouserLength || 'Standard'} in`;
+    } else {
+      message += `\n\nSelected Size: ${selectedSize}`;
     }
 
-    message += `\n
-Customer Name: ${customerName}`;
+    message += `\n\nCustomer Details:\n- Name: ${customerName}`;
     if (customerPhone) {
-      message += `\nPhone: ${customerPhone}`;
+      message += `\n- WhatsApp Contact: ${customerPhone}`;
     }
-    
-    message += `\n\nWebsite: Mushq Outfits Karachi\nThank you!`;
 
     // Encode text
     const encodedText = encodeURIComponent(message);
@@ -88,13 +92,27 @@ Customer Name: ${customerName}`;
       customerPhone: customerPhone || 'WhatsApp Client',
       productTitle: product.title,
       price: priceText,
-      sku: product.sku
+      sku: product.sku,
+      productLink: productUrl
     });
 
     setOrderPlaced(true);
 
     // Open WhatsApp
     window.open(whatsappUrl, '_blank');
+  };
+
+  const handleAddToCartBtn = () => {
+    let customMeasurements = undefined;
+    if (showStitchingForm) {
+      customMeasurements = {
+        bust: bustSize || 'Standard',
+        shirtLength: shirtLength || 'Standard',
+        waist: waistSize || 'Standard',
+        trouserLength: trouserLength || 'Standard'
+      };
+    }
+    onAddToCart(product, 1, selectedSize, customMeasurements);
   };
 
   return (
@@ -364,14 +382,25 @@ Customer Name: ${customerName}`;
                 PRODUCT TEMPORARILY SOLD OUT
               </button>
             ) : (
-              <button
-                type="submit"
-                id="btn-whatsapp-order"
-                className="w-full bg-emerald-900 hover:bg-emerald-950 active:scale-[0.98] text-[#fff] font-bold uppercase py-4 rounded-lg text-xs tracking-[0.18em] flex items-center justify-center gap-3 shadow-md hover:shadow-lg transition-all cursor-pointer"
-              >
-                <MessageSquare className="w-4.5 h-4.5 text-gold-400" />
-                <span>ORDER ON WHATSAPP SECURELY</span>
-              </button>
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleAddToCartBtn}
+                  className="w-full bg-[#fff] hover:bg-cream-50 border-2 border-emerald-950 text-emerald-950 font-bold uppercase py-3.5 rounded-lg text-xs tracking-[0.18em] flex items-center justify-center gap-3 shadow-md hover:shadow-lg transition-all cursor-pointer"
+                >
+                  <ShoppingBag className="w-4 h-4 text-emerald-900" />
+                  <span>ADD TO LUXURY BAG</span>
+                </button>
+
+                <button
+                  type="submit"
+                  id="btn-whatsapp-order"
+                  className="w-full bg-emerald-900 hover:bg-emerald-950 active:scale-[0.98] text-[#fff] font-bold uppercase py-4 rounded-lg text-xs tracking-[0.18em] flex items-center justify-center gap-3 shadow-md hover:shadow-lg transition-all cursor-pointer"
+                >
+                  <MessageSquare className="w-4.5 h-4.5 text-gold-400" />
+                  <span>ORDER ON WHATSAPP SECURELY</span>
+                </button>
+              </div>
             )}
 
             {orderPlaced && (

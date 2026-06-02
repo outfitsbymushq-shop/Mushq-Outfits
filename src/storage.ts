@@ -148,7 +148,21 @@ export const deleteBanner = (id: string): Banner[] => {
 // Inquiries API
 export const getInquiries = (): Inquiry[] => {
   initializeDatabase();
-  return JSON.parse(localStorage.getItem(KEYS.INQUIRIES) || '[]');
+  const raw = localStorage.getItem(KEYS.INQUIRIES) || '[]';
+  const parsed: Inquiry[] = JSON.parse(raw);
+  // Ensure existing entries have status if they don't
+  let migrated = false;
+  const migratedList = parsed.map(item => {
+    if (!item.status) {
+      item.status = 'New Order';
+      migrated = true;
+    }
+    return item;
+  });
+  if (migrated) {
+    localStorage.setItem(KEYS.INQUIRIES, JSON.stringify(migratedList));
+  }
+  return migratedList;
 };
 
 export const addInquiry = (inquiry: Omit<Inquiry, 'id' | 'date'>): Inquiry[] => {
@@ -156,10 +170,21 @@ export const addInquiry = (inquiry: Omit<Inquiry, 'id' | 'date'>): Inquiry[] => 
   const newInquiry: Inquiry = {
     ...inquiry,
     id: 'inq_' + Date.now(),
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    status: inquiry.status || 'New Order'
   };
   inquiries.unshift(newInquiry);
   localStorage.setItem(KEYS.INQUIRIES, JSON.stringify(inquiries));
+  return inquiries;
+};
+
+export const updateInquiryStatus = (id: string, status: 'New Order' | 'Contacted' | 'Confirmed' | 'Processing' | 'Delivered' | 'Cancelled'): Inquiry[] => {
+  const inquiries = getInquiries();
+  const index = inquiries.findIndex(i => i.id === id);
+  if (index > -1) {
+    inquiries[index] = { ...inquiries[index], status };
+    localStorage.setItem(KEYS.INQUIRIES, JSON.stringify(inquiries));
+  }
   return inquiries;
 };
 

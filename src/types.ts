@@ -41,6 +41,21 @@ export interface Inquiry {
   price: string;
   sku: string;
   date: string;
+  productLink?: string;
+  status?: 'New Order' | 'Contacted' | 'Confirmed' | 'Processing' | 'Delivered' | 'Cancelled';
+}
+
+export interface CartItem {
+  id: string;
+  product: Product;
+  quantity: number;
+  selectedSize: string;
+  customMeasurements?: {
+    bust?: string;
+    shirtLength?: string;
+    waist?: string;
+    trouserLength?: string;
+  };
 }
 
 export interface Review {

@@ -10,7 +10,7 @@ import {
   getProducts, saveProduct, deleteProduct,
   getCategories, saveCategory, deleteCategory,
   getBanners, saveBanner, deleteBanner,
-  getInquiries, addInquiry, deleteInquiry,
+  getInquiries, addInquiry, deleteInquiry, updateInquiryStatus,
   getSEO, saveSEO, getReviews, getVisitors
 } from '../storage';
 import SupabaseCode from './SupabaseCode';
@@ -338,6 +338,11 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
       deleteInquiry(id);
       loadDatabase();
     }
+  };
+
+  const handleUpdateInquiryStatus = (id: string, status: 'New Order' | 'Contacted' | 'Confirmed' | 'Processing' | 'Delivered' | 'Cancelled') => {
+    updateInquiryStatus(id, status);
+    loadDatabase();
   };
 
   // LOGIN SCREEN
@@ -1202,53 +1207,121 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
             </div>
           )}
 
-          {/* TAB 5: INQUIRIES REGISTER */}
+          {/* TAB 5: INQUIRIES REGISTER (ORDER MANAGEMENT) */}
           {activeTab === 'inquiries' && (
             <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="bg-[#fff] border border-cream-100 p-4 rounded-xl shadow-sm">
-                <h2 className="text-md font-serif font-bold text-emerald-950 uppercase tracking-wider">Inquiry Hub Archive</h2>
-                <p className="text-xs text-neutral-400">Incoming checkouts routed via WhatsApp client trigger logs. Total registries compiled: {inquiries.length}</p>
+              <div className="bg-[#fff] border border-cream-100 p-6 rounded-xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h2 className="text-lg font-serif font-bold text-emerald-950 uppercase tracking-wide">Bespoke Order Management System</h2>
+                  <p className="text-xs text-neutral-400 mt-1">Track pending orders, update delivery status pipelines, and coordinate WhatsApp followups. Total orders: {inquiries.length}</p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold border border-emerald-100 px-3 py-1.5 uppercase tracking-wide">
+                    24/7 Active Logs
+                  </span>
+                </div>
               </div>
 
               <div className="bg-[#fff] border border-cream-100 rounded-xl shadow-sm overflow-hidden text-xs">
                 {inquiries.length === 0 ? (
                   <div className="p-12 text-center text-sm text-neutral-400 font-medium">
-                    No customers checked out under the review instance yet.
+                    No orders or checkout inquiries compiled in this sandbox instance yet.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-cream-50 text-neutral-500 uppercase tracking-widest text-[9px] font-bold">
-                          <th className="p-4">Customer</th>
-                          <th className="p-4">Phone contact</th>
-                          <th className="p-4">Desired item design</th>
-                          <th className="p-4">Price</th>
-                          <th className="p-4">Creation stamp</th>
-                          <th className="p-4 text-right">Registry settings</th>
+                        <tr className="bg-cream-50 text-neutral-500 uppercase tracking-widest text-[9px] font-bold border-b border-cream-100">
+                          <th className="p-4">Order ID & Date</th>
+                          <th className="p-4">Customer Name</th>
+                          <th className="p-4">WhatsApp Contact</th>
+                          <th className="p-4">Ordered Product</th>
+                          <th className="p-4">Fabric SKU & Price</th>
+                          <th className="p-4">Product URL Link</th>
+                          <th className="p-4">Order Status</th>
+                          <th className="p-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-cream-100">
-                        {inquiries.map((inq) => (
-                          <tr key={inq.id} className="hover:bg-cream-50/20">
-                            <td className="p-4 font-bold text-emerald-950 font-serif text-sm">{inq.customerName}</td>
-                            <td className="p-4 font-mono select-all font-semibold text-neutral-700">{inq.customerPhone}</td>
-                            <td className="p-4">
-                              <span className="block font-bold text-neutral-800">{inq.productTitle}</span>
-                              <span className="block text-[10px] text-neutral-400">SKU Code: {inq.sku}</span>
-                            </td>
-                            <td className="p-4 font-mono text-emerald-950 font-bold">{inq.price}</td>
-                            <td className="p-4 text-neutral-500">{inq.date}</td>
-                            <td className="p-4 text-right">
-                              <button
-                                onClick={() => handleDeleteInquiryLog(inq.id)}
-                                className="text-rose-700 hover:text-rose-950 font-bold cursor-pointer"
-                              >
-                                Delete Log
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                        {inquiries.map((inq) => {
+                          const status = inq.status || 'New Order';
+                          
+                          // Badge styling mapping
+                          let badgeClass = 'bg-blue-50 text-blue-700 border-blue-200';
+                          if (status === 'Contacted') badgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                          if (status === 'Confirmed') badgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
+                          if (status === 'Processing') badgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                          if (status === 'Delivered') badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                          if (status === 'Cancelled') badgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
+
+                          const displayLink = inq.productLink || `https://outfitsbymushq.netlify.app/product/${inq.sku}`;
+
+                          return (
+                            <tr key={inq.id} className="hover:bg-cream-50/15 transition-colors">
+                              <td className="p-4 font-mono text-[10px] text-neutral-400">
+                                <span className="block font-bold text-neutral-700">#{inq.id.replace('inq_', '')}</span>
+                                <span className="block mt-1 font-sans">{inq.date}</span>
+                              </td>
+                              <td className="p-4 font-bold text-emerald-950 font-serif text-sm">
+                                {inq.customerName}
+                              </td>
+                              <td className="p-4 font-mono select-all font-semibold text-neutral-700">
+                                <a 
+                                  href={`https://wa.me/${inq.customerPhone?.replace(/[^0-9]/g, '') || '923020038010'}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-emerald-800 hover:underline flex items-center gap-1"
+                                >
+                                  <span>{inq.customerPhone || 'N/A'}</span>
+                                  <span className="text-[9px] bg-emerald-50 text-emerald-800 px-1 font-sans font-normal border border-emerald-100 rounded">Chat</span>
+                                </a>
+                              </td>
+                              <td className="p-4 font-semibold text-neutral-800">
+                                {inq.productTitle}
+                              </td>
+                              <td className="p-4">
+                                <span className="block font-mono text-emerald-950 font-bold">{inq.price}</span>
+                                <span className="block text-[10px] text-neutral-400">SKU: {inq.sku}</span>
+                              </td>
+                              <td className="p-4">
+                                <a 
+                                  href={displayLink} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="text-gold-700 hover:text-gold-950 font-bold underline underline-offset-2 flex items-center gap-1 tracking-wider uppercase text-[10px]"
+                                >
+                                  <span>View Item</span>
+                                  <span>↗</span>
+                                </a>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-1.5">
+                                  <select
+                                    value={status}
+                                    onChange={(e) => handleUpdateInquiryStatus(inq.id, e.target.value as any)}
+                                    className={`px-2 py-1.5 rounded-none font-bold text-[11px] border cursor-pointer focus:outline-none transition-all ${badgeClass}`}
+                                  >
+                                    <option value="New Order">New Order</option>
+                                    <option value="Contacted">Contacted</option>
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Processing">Processing</option>
+                                    <option value="Delivered">Delivered</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                  </select>
+                                </div>
+                              </td>
+                              <td className="p-4 text-right">
+                                <button
+                                  onClick={() => handleDeleteInquiryLog(inq.id)}
+                                  className="text-rose-700 hover:text-rose-950 font-bold cursor-pointer hover:underline"
+                                  title="Remove log entry"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

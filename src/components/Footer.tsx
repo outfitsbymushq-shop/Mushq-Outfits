@@ -171,12 +171,17 @@ export default function Footer({ onSelectCategory, onChangeView }: FooterProps) 
       {/* Deep footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 border-t border-cream-150 flex flex-col md:flex-row items-center justify-between text-xs text-neutral-500 gap-4">
         <p>© 2026 Mushq Outfits Karachi. All Rights Reserved. Custom Eastern Haute Couture.</p>
-        <div className="flex gap-6">
-          <button onClick={() => onChangeView('admin')} className="hover:text-gold-600 transition-colors font-semibold cursor-pointer">
-            Admin Suite
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+          <span className="text-neutral-400 font-medium">Bespoke WhatsApp Luxury Boutique & Retailer</span>
+          <button 
+            onClick={() => {
+              onChangeView('admin');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="text-gold-600 hover:text-gold-700 font-bold transition-colors cursor-pointer select-none underline"
+          >
+            Boutique Console
           </button>
-          <span>|</span>
-          <span className="text-neutral-400 font-medium">Bespoke WhatsApp Luxury Portal</span>
         </div>
       </div>
     </footer>

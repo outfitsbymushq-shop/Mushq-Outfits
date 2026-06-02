@@ -12,7 +12,10 @@ interface HeaderProps {
   onChangeView: (view: 'home' | 'shop' | 'details' | 'admin') => void;
   wishlistCount: number;
   onOpenWishlist: () => void;
-  isAdminLoggedIn: boolean;
+  cartCount: number;
+  onOpenCart: () => void;
+  mobileMenuOpen: boolean;
+  setMobileMenuOpen: (open: boolean) => void;
 }
 
 export default function Header({
@@ -25,9 +28,11 @@ export default function Header({
   onChangeView,
   wishlistCount,
   onOpenWishlist,
-  isAdminLoggedIn
+  cartCount,
+  onOpenCart,
+  mobileMenuOpen,
+  setMobileMenuOpen
 }: HeaderProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
   const handleNavClick = (slug: string) => {
@@ -44,74 +49,78 @@ export default function Header({
   return (
     <header id="site-header" className="sticky top-0 z-50 bg-cream-50/85 backdrop-blur-md border-b border-cream-150 transition-all duration-300">
       {/* Top micro-banner */}
-      <div className="bg-emerald-950 text-[#fff] py-2 px-4 text-center text-[10px] md:text-xs font-medium tracking-[0.18em] uppercase flex items-center justify-center gap-2">
-        <Sparkles className="w-3 h-3 text-gold-400 animate-pulse" />
-        <span>LUXURY FESTIVE STITCHING & NATIONWIDE FREE SHIPPING ON INQUIRIES</span>
+      <div className="bg-emerald-950 text-[#fff] py-2 px-3 text-center text-[9px] sm:text-xs font-medium tracking-[0.1em] sm:tracking-[0.18em] uppercase flex items-center justify-center gap-1.5 sm:gap-2 leading-tight break-all">
+        <Sparkles className="w-3 h-3 text-gold-400 animate-pulse shrink-0" />
+        <span className="truncate max-w-[85vw] sm:max-w-none">LUXURY FESTIVE STITCHING & NATIONWIDE FREE SHIPPING ON INQUIRIES</span>
         <span className="hidden md:inline">| DIRECT WHATSAPP RESPONSE +92 302 0038010</span>
       </div>
 
       {/* Main navigation area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 md:h-24 flex items-center justify-between relative">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 md:h-24 grid grid-cols-3 items-center relative w-full overflow-hidden">
         
-        {/* Left: Mobile hamburger & Search toggle */}
-        <div className="flex items-center gap-6 w-1/4">
+        {/* Column 1: Left (Hamburger & Search) */}
+        <div className="flex items-center justify-start gap-1 sm:gap-3 z-15 shrink-0">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             id="btn-mobile-menu"
-            className="md:hidden p-2 text-emerald-950 focus:outline-none cursor-pointer"
+            className="md:hidden p-2 text-emerald-950 focus:outline-none cursor-pointer hover:bg-cream-100/50 rounded-full active:scale-95 transition-all flex items-center justify-center"
             aria-label="Toggle menu"
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileMenuOpen ? <X className="w-5.5 h-5.5" /> : <Menu className="w-5.5 h-5.5" />}
           </button>
           
           <button 
             onClick={() => setSearchOpen(!searchOpen)}
             id="btn-desktop-search"
-            className="hidden md:flex items-center gap-2 text-xs text-emerald-950 hover:text-gold-600 transition-colors uppercase font-medium tracking-widest cursor-pointer"
+            className="p-2 text-emerald-950 hover:text-gold-600 transition-colors uppercase font-bold tracking-widest cursor-pointer flex items-center gap-1.5 text-xs rounded-full hover:bg-cream-100/35"
+            aria-label="Search"
           >
-            <Search className="w-3.5 h-3.5" />
-            <span>Search</span>
+            <Search className="w-4.5 h-4.5" />
+            <span className="hidden md:inline">Search</span>
           </button>
         </div>
 
-        {/* Center: Brand Identity */}
-        <div className="absolute left-1/2 -translate-x-1/2 text-center flex flex-col items-center justify-center cursor-pointer select-none py-1" onClick={handleLogoClick}>
-          <h1 className="text-2xl md:text-3.5xl font-serif tracking-[0.2em] uppercase text-emerald-950 leading-none">
+        {/* Column 2: Center (Logo BRAND) */}
+        <div 
+          className="flex flex-col items-center justify-center text-center cursor-pointer select-none py-1 z-10" 
+          onClick={handleLogoClick}
+        >
+          <h1 className="text-lg sm:text-2xl md:text-3.5xl font-serif tracking-[0.15em] sm:tracking-[0.2em] uppercase text-emerald-950 leading-none">
             Mushq
           </h1>
-          <span className="text-[7.5px] md:text-[8px] tracking-[0.45em] uppercase -mt-0.5 font-bold text-gold-500 block">
+          <span className="text-[6.5px] sm:text-[7.5px] md:text-[8px] tracking-[0.3em] sm:tracking-[0.45em] uppercase -mt-0.5 font-bold text-gold-500 block">
             Luxury Outfits
           </span>
         </div>
 
-        {/* Right: Actions */}
-        <div className="flex items-center justify-end gap-3 md:gap-6 w-1/4">
-          <button
-            onClick={() => {
-              onChangeView(currentView === 'admin' ? 'home' : 'admin');
-            }}
-            id="btn-admin-portal"
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase transition-all duration-200 cursor-pointer ${
-              currentView === 'admin'
-                ? 'bg-gold-500 text-emerald-950'
-                : 'bg-emerald-950 text-[#fff] hover:bg-emerald-900 shadow-sm'
-            }`}
-          >
-            <Settings className="w-3 h-3" />
-            <span className="hidden sm:inline">{isAdminLoggedIn ? 'Dashboard' : 'Admin'}</span>
-          </button>
-
+        {/* Column 3: Right (Wishlist & Cart) */}
+        <div className="flex items-center justify-end gap-1 sm:gap-3 md:gap-5 z-15 shrink-0">
           <button
             onClick={onOpenWishlist}
             id="btn-wishlist-drawer"
-            className="relative p-2 text-emerald-950 hover:text-gold-600 transition-colors cursor-pointer text-xs font-medium uppercase tracking-widest flex items-center gap-1.5"
+            className="relative p-2 text-emerald-950 hover:text-gold-600 transition-colors cursor-pointer text-xs font-bold uppercase tracking-wider flex items-center gap-1 select-none"
             aria-label="Wishlist"
           >
-            <Heart className="w-4.5 h-4.5" />
-            <span className="hidden md:inline">Bag ({wishlistCount})</span>
+            <Heart className="w-4.5 h-4.5 text-neutral-800 hover:text-rose-600" />
+            <span className="hidden md:inline">Wishlist ({wishlistCount})</span>
             {wishlistCount > 0 && (
-              <span className="md:hidden absolute -top-1 -right-1 bg-gold-600 text-[#fff] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 md:-top-1.5 md:-right-1.5 bg-gold-600 text-[#fff] text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
                 {wishlistCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={onOpenCart}
+            id="btn-cart-drawer"
+            className="relative p-2 text-emerald-950 hover:text-gold-600 transition-colors cursor-pointer text-xs font-bold uppercase tracking-wider flex items-center gap-1 select-none"
+            aria-label="Cart"
+          >
+            <ShoppingBag className="w-4.5 h-4.5 text-emerald-900" />
+            <span className="hidden md:inline">Cart ({cartCount})</span>
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 md:-top-1.5 md:-right-1.5 bg-emerald-900 text-[#fff] text-[9px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-xs">
+                {cartCount}
               </span>
             )}
           </button>
@@ -179,84 +188,6 @@ export default function Header({
             >
               Close
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile Menu Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-40 flex bg-transparent">
-          {/* Backdrop */}
-          <div className="fixed inset-0 bg-[#000]/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}></div>
-          
-          <div className="relative flex flex-col w-4/5 max-w-sm bg-[#faf9f5] h-full shadow-2xl p-6 border-r border-cream-100 overflow-y-auto animate-in slide-in-from-left duration-300">
-            <div className="flex justify-between items-center mb-10">
-              <div className="flex flex-col">
-                <span className="text-xl font-serif font-bold tracking-[0.16em] text-emerald-950">MUSHQ</span>
-                <span className="text-[8px] tracking-[0.4em] text-gold-600 font-bold uppercase">OUTFITS</span>
-              </div>
-              <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-emerald-900 bg-cream-100 rounded-full cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Mobile Search input */}
-            <div className="mb-8 relative">
-              <Search className="w-4 h-4 text-emerald-800 absolute left-3.5 top-3.5" />
-              <input
-                type="text"
-                placeholder="Search outfits..."
-                value={searchTerm}
-                onChange={(e) => {
-                  onSearch(e.target.value);
-                  onChangeView('shop');
-                }}
-                className="w-full bg-[#fff] border border-cream-200 rounded-lg pl-10 pr-4 py-3 text-xs text-emerald-950 focus:outline-none focus:ring-2 focus:ring-gold-400"
-              />
-            </div>
-
-            {/* Navigation items */}
-            <span className="text-[10px] tracking-[0.2em] font-bold text-gold-600 uppercase mb-4 border-b border-cream-100 pb-2">Collections</span>
-            
-            <div className="flex flex-col gap-5.5">
-              <button
-                onClick={() => {
-                  onChangeView('home');
-                  setMobileMenuOpen(false);
-                }}
-                className={`text-left text-sm font-semibold uppercase tracking-wider ${currentView === 'home' ? 'text-gold-600' : 'text-emerald-950'}`}
-              >
-                🏡 Home Page
-              </button>
-              
-              <button
-                onClick={() => handleNavClick('all')}
-                className={`text-left text-sm font-semibold uppercase tracking-wider ${currentView === 'shop' && activeCategory === 'all' ? 'text-gold-600' : 'text-emerald-950'}`}
-              >
-                👜 View All Outfits
-              </button>
-
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => handleNavClick(cat.slug)}
-                  className={`text-left text-sm font-medium tracking-wide text-neutral-700 hover:text-gold-600 pl-4 py-0.5 border-l-2 ${
-                    activeCategory === cat.slug && currentView === 'shop' ? 'border-gold-500 text-gold-600 font-bold' : 'border-transparent'
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-
-            {/* Micro details panel at bottom of drawer */}
-            <div className="mt-auto border-t border-cream-100 pt-6 flex flex-col gap-3">
-              <div className="flex items-center gap-2 text-xs text-neutral-500 font-medium">
-                <MessageSquare className="w-4 h-4 text-emerald-800" />
-                <span>WhatsApp: +92 302 0038010</span>
-              </div>
-              <p className="text-[10px] text-neutral-400">Karachi, Pakistan. Absolute Eastern Elegance.</p>
-            </div>
           </div>
         </div>
       )}
