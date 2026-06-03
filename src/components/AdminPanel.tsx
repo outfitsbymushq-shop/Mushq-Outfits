@@ -3,7 +3,8 @@ import {
   Building, LayoutDashboard, ShoppingBag, FolderHeart, Image, 
   Users, Search, ShieldCheck, Sparkles, Plus, Trash2, Edit3, 
   Check, Save, ArrowRight, Eye, RefreshCw, LogOut, Terminal, 
-  FileText, ArrowUpRight, HelpCircle
+  FileText, ArrowUpRight, HelpCircle, Video, Palette, Info, 
+  CheckCircle2, AlertTriangle, AlertCircle, PlayCircle, Loader2, Play
 } from 'lucide-react';
 import { Product, Category, Banner, Inquiry, SEOMetadata } from '../types';
 import { 
@@ -15,12 +16,30 @@ import {
   getWebsiteSettings, saveWebsiteSettings, uploadImage
 } from '../storage';
 import { supabase } from '../supabaseClient';
-import SupabaseCode from './SupabaseCode';
 
 interface AdminPanelProps {
   onDatabaseUpdate: () => void;
   onLogoutAdmin: () => void;
 }
+
+const DEFAULT_PRODUCT_DESCRIPTION = `[Fabric Details]
+Premium authentic high-grade Eastern luxury lawn fabric, embroidered meticulously with luxury silk threads and zari crafting. Intricate traditional designs and luxurious soft feel.
+
+[Measurement / Size Chart]
+Standard Sizing Reference (Inches):
+- S  : Chest: 36" | Waist: 30" | Shoulder: 14.0" | Shirt Length: 39"
+- M  : Chest: 40" | Waist: 34" | Shoulder: 15.0" | Shirt Length: 40"
+- L  : Chest: 44" | Waist: 38" | Shoulder: 16.0" | Shirt Length: 41"
+- XL : Chest: 48" | Waist: 42" | Shoulder: 17.5" | Shirt Length: 42"
+- Custom: Hand-tailored to your exact requested dimensions.
+
+[Care Instructions]
+- Dry clean highly recommended to preserve rich embellishments.
+- Wash delicate fabrics inside out using cold water and mild liquid detergent.
+- Iron on low heat settings; avoid direct steam on thread ornaments.
+
+[Disclaimer Detail]
+Actual product color may slightly vary due to lighting conditions, photography, and screen display settings.`;
 
 export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPanelProps) {
   // Authentication states
@@ -29,8 +48,8 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
 
-  // Active Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'categories' | 'banners' | 'inquiries' | 'seo' | 'supabase'>('overview');
+  // Active Tab - Completely hide 'supabase' SQL tab
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'categories' | 'banners' | 'inquiries' | 'seo'>('overview');
 
   // Database lists
   const [products, setProducts] = useState<Product[]>([]);
@@ -57,13 +76,54 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
   const [prodPrice, setProdPrice] = useState(0);
   const [prodSalePrice, setProdSalePrice] = useState('');
   const [prodCategory, setProdCategory] = useState('');
-  const [prodImages, setProdImages] = useState<string[]>(['']);
+  const [prodImages, setProdImages] = useState<string[]>(['', '', '']); // EXACT 3 IMAGES
   const [prodStock, setProdStock] = useState<'instock' | 'outofstock'>('instock');
   const [prodSku, setProdSku] = useState('');
   const [prodId, setProdId] = useState('');
   const [prodFabric, setProdFabric] = useState('');
-  const [prodSizes, setProdSizes] = useState<string[]>(['S', 'M', 'L', 'XL', 'Custom Stitching']);
+  const [prodSizes, setProdSizes] = useState<string[]>(['S', 'M', 'L', 'XL']);
+  const [prodVideoUrl, setProdVideoUrl] = useState('');
+  const [prodColors, setProdColors] = useState<string[]>([]);
+  const [newColorInput, setNewColorInput] = useState('');
   const [prodFeatured, setProdFeatured] = useState(false);
+  
+  // UX Enhancement states
+  const [isActionLoading, setIsActionLoading] = useState(false);
+
+  // Custom Toast State
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  };
+
+  // Custom Confirmation Dialog State
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmDialog(p => ({ ...p, isOpen: false }));
+      }
+    });
+  };
   
   // Generating description with AI Gemini helper
   const [isAiGenerating, setIsAiGenerating] = useState(false);
@@ -214,17 +274,27 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
   const handleOpenProductAdd = () => {
     setEditingProduct(null);
     setProdTitle('');
-    setProdDesc('');
+    // Use the professional default product template containing Sizing, Fabric details, Care, and Disclaimer
+    setProdDesc(DEFAULT_PRODUCT_DESCRIPTION);
     setProdPrice(10000);
     setProdSalePrice('');
     setProdCategory(categories[0]?.slug || 'luxury-lawn');
-    setProdImages(['https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=800']);
+    setProdImages(['https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=800', '', '']);
     setProdStock('instock');
-    const randomSku = 'MQ-EST-' + Math.floor(100 + Math.random() * 900);
-    setProdSku(randomSku);
-    setProdId('MQ-PROD-' + Math.floor(10 + Math.random() * 90));
+    
+    // Automatically Generated SKU
+    const randCode = Math.floor(1000 + Math.random() * 8999);
+    const skuString = `MQ-${(categories[0]?.slug || 'LAWN').toUpperCase().replace(/[^A-Z]/g, '').substring(0, 5)}-${randCode}`;
+    setProdSku(skuString);
+
+    // Automatically Generated Product Display ID
+    const displayIdString = `PROD-${randCode}`;
+    setProdId(displayIdString);
+
     setProdFabric('Cotton Lawn');
-    setProdSizes(['S', 'M', 'L', 'XL', 'Custom Stitching']);
+    setProdSizes(['S', 'M', 'L', 'XL', 'Custom']);
+    setProdColors(['Classic Black', 'Rose Wood', 'Gold Zari']);
+    setProdVideoUrl('');
     setProdFeatured(false);
     setIsProductModalOpen(true);
   };
@@ -236,53 +306,107 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
     setProdPrice(p.price);
     setProdSalePrice(p.salePrice ? p.salePrice.toString() : '');
     setProdCategory(p.category);
-    setProdImages([...p.images]);
+    
+    // Ensure we handle exactly 3 product photos
+    const imgArr = [...p.images];
+    while (imgArr.length < 3) imgArr.push('');
+    setProdImages(imgArr.slice(0, 3));
+    
     setProdStock(p.stockStatus);
     setProdSku(p.sku);
     setProdId(p.productId);
     setProdFabric(p.fabric);
     setProdSizes(p.sizeInfo || ['S', 'M', 'L', 'XL']);
+    setProdColors(p.colors || []);
+    setProdVideoUrl(p.videoUrl || '');
     setProdFeatured(p.isFeatured);
     setIsProductModalOpen(true);
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newProduct: Product = {
-      id: editingProduct ? editingProduct.id : 'pro_' + Date.now(),
-      title: prodTitle,
-      description: prodDesc,
-      price: Number(prodPrice),
-      salePrice: prodSalePrice ? Number(prodSalePrice) : undefined,
-      category: prodCategory,
-      images: prodImages.filter(img => img.trim() !== ''),
-      stockStatus: prodStock,
-      sku: prodSku,
-      productId: prodId,
-      fabric: prodFabric,
-      sizeInfo: prodSizes,
-      isFeatured: prodFeatured,
-      createdAt: editingProduct ? editingProduct.createdAt : new Date().toISOString()
-    };
-    await saveProduct(newProduct);
-    await loadDatabase();
-    onDatabaseUpdate();
-    setIsProductModalOpen(false);
-  };
+    if (!prodTitle.trim()) {
+      showToast('Product title cannot be empty.', 'error');
+      return;
+    }
+    if (!prodSku.trim() || !prodId.trim()) {
+      showToast('SKU and Product Display ID are required.', 'error');
+      return;
+    }
 
-  const handleDeleteProduct = async (id: string) => {
-    if (confirm('Are you sure you want to delete this exquisite product?')) {
-      await deleteProduct(id);
+    setIsActionLoading(true);
+    try {
+      const filteredImages = prodImages.map(img => img.trim()).filter(Boolean);
+      if (filteredImages.length === 0) {
+        showToast('Please provide at least a primary product picture.', 'error');
+        setIsActionLoading(false);
+        return;
+      }
+
+      const newProduct: Product = {
+        id: editingProduct ? editingProduct.id : 'pro_' + Date.now(),
+        title: prodTitle,
+        description: prodDesc,
+        price: Number(prodPrice),
+        salePrice: prodSalePrice ? Number(prodSalePrice) : undefined,
+        category: prodCategory,
+        images: filteredImages,
+        stockStatus: prodStock,
+        sku: prodSku,
+        productId: prodId,
+        fabric: prodFabric,
+        sizeInfo: prodSizes,
+        colors: prodColors,
+        videoUrl: prodVideoUrl,
+        isFeatured: prodFeatured,
+        createdAt: editingProduct ? editingProduct.createdAt : new Date().toISOString()
+      };
+
+      await saveProduct(newProduct);
       await loadDatabase();
       onDatabaseUpdate();
+      setIsProductModalOpen(false);
+      showToast(editingProduct ? 'Premium outfit saved successfully!' : 'Stunning new outfit added successfully!', 'success');
+    } catch (err: any) {
+      showToast(`Failed to save outfit: ${err.message || err}`, 'error');
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
+  const handleDeleteProduct = async (id: string) => {
+    triggerConfirm(
+      'Remove Premium Outfit',
+      'Are you sure you want to permanently delete this outfit from the website?',
+      async () => {
+        setIsActionLoading(true);
+        try {
+          await deleteProduct(id);
+          await loadDatabase();
+          onDatabaseUpdate();
+          showToast('Product outfit removed from boutique archive.', 'success');
+        } catch (err: any) {
+          showToast(`Deletion failed: ${err.message || err}`, 'error');
+        } finally {
+          setIsActionLoading(false);
+        }
+      }
+    );
+  };
+
   const handleToggleProductFeatured = async (p: Product) => {
-    const updated = { ...p, isFeatured: !p.isFeatured };
-    await saveProduct(updated);
-    await loadDatabase();
-    onDatabaseUpdate();
+    setIsActionLoading(true);
+    try {
+      const updated = { ...p, isFeatured: !p.isFeatured };
+      await saveProduct(updated);
+      await loadDatabase();
+      onDatabaseUpdate();
+      showToast(p.isFeatured ? 'Removed from homepage showcase tabs.' : 'Successfully pinned to premium showcase tabs!', 'success');
+    } catch (err: any) {
+      showToast(`Failed to pin outfit: ${err.message || err}`, 'error');
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   // AI GEMINI LUXURY DESCRIPTION GENERATOR
@@ -358,25 +482,49 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
 
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newCat: Category = {
-      id: editingCategory ? editingCategory.id : 'cat_' + Date.now(),
-      name: catName,
-      slug: catSlug || catName.toLowerCase().replace(/ /g, '-'),
-      description: catDesc,
-      image: catImage
-    };
-    await saveCategory(newCat);
-    await loadDatabase();
-    onDatabaseUpdate();
-    setIsCategoryModalOpen(false);
+    if (!catName.trim()) {
+      showToast('Category name is required.', 'error');
+      return;
+    }
+    setIsActionLoading(true);
+    try {
+      const newCat: Category = {
+        id: editingCategory ? editingCategory.id : 'cat_' + Date.now(),
+        name: catName,
+        slug: catSlug || catName.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, ''),
+        description: catDesc,
+        image: catImage
+      };
+      await saveCategory(newCat);
+      await loadDatabase();
+      onDatabaseUpdate();
+      setIsCategoryModalOpen(false);
+      showToast('Category saved successfully!', 'success');
+    } catch (err: any) {
+      showToast(`Failed to save category: ${err.message || err}`, 'error');
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (confirm('Delete this category? Associated products may lose indexing.')) {
-      await deleteCategory(id);
-      await loadDatabase();
-      onDatabaseUpdate();
-    }
+    triggerConfirm(
+      'Delete Category',
+      'Are you sure you want to delete this category? Associated products may lose indexing.',
+      async () => {
+        setIsActionLoading(true);
+        try {
+          await deleteCategory(id);
+          await loadDatabase();
+          onDatabaseUpdate();
+          showToast('Category deleted successfully.', 'success');
+        } catch (err: any) {
+          showToast(`Deletion failed: ${err.message || err}`, 'error');
+        } finally {
+          setIsActionLoading(false);
+        }
+      }
+    );
   };
 
   // BANNER CRUDS
@@ -402,52 +550,103 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
 
   const handleSaveBanner = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newBanner: Banner = {
-      id: editingBanner ? editingBanner.id : 'banner_' + Date.now(),
-      title: bannerTitle,
-      subtitle: bannerSubtitle,
-      image: bannerImage,
-      link: bannerLink,
-      isActive: bannerActive
-    };
-    await saveBanner(newBanner);
-    await loadDatabase();
-    onDatabaseUpdate();
-    setIsBannerModalOpen(false);
+    if (!bannerTitle.trim()) {
+      showToast('Banner title is required.', 'error');
+      return;
+    }
+    setIsActionLoading(true);
+    try {
+      const newBanner: Banner = {
+        id: editingBanner ? editingBanner.id : 'banner_' + Date.now(),
+        title: bannerTitle,
+        subtitle: bannerSubtitle,
+        image: bannerImage,
+        link: bannerLink,
+        isActive: bannerActive
+      };
+      await saveBanner(newBanner);
+      await loadDatabase();
+      onDatabaseUpdate();
+      setIsBannerModalOpen(false);
+      showToast('Boutique banner updated successfully!', 'success');
+    } catch (err: any) {
+      showToast(`Failed to save banner: ${err.message || err}`, 'error');
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   const handleDeleteBanner = async (id: string) => {
-    if (confirm('Remove this promotional banner?')) {
-      await deleteBanner(id);
-      await loadDatabase();
-      onDatabaseUpdate();
-    }
+    triggerConfirm(
+      'Remove Boutique Banner',
+      'Are you sure you want to delete this home styling banner from the website?',
+      async () => {
+        setIsActionLoading(true);
+        try {
+          await deleteBanner(id);
+          await loadDatabase();
+          onDatabaseUpdate();
+          showToast('Banner removed from home slide.', 'success');
+        } catch (err: any) {
+          showToast(`Deletion failed: ${err.message || err}`, 'error');
+        } finally {
+          setIsActionLoading(false);
+        }
+      }
+    );
   };
 
   // SEO SAVE & WEBSITE SETTINGS
   const handleSaveSEOConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    await saveSEO(seo);
-    await saveWebsiteSettings({
-      storeName,
-      whatsappNumber,
-      facebookLink
-    });
-    alert('Website configurations and SEO meta headers successfully saved to Supabase!');
-    await loadDatabase();
+    setIsActionLoading(true);
+    try {
+      await saveSEO(seo);
+      await saveWebsiteSettings({
+        storeName,
+        whatsappNumber,
+        facebookLink
+      });
+      await loadDatabase();
+      showToast('Website configurations & SEO metadata saved successfully!', 'success');
+    } catch (err: any) {
+      showToast(`Failed to commit configuration: ${err.message || err}`, 'error');
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   // INQUIRIES DELETE
   const handleDeleteInquiryLog = async (id: string) => {
-    if (confirm('Dismiss this inquiry registry?')) {
-      await deleteInquiry(id);
-      await loadDatabase();
-    }
+    triggerConfirm(
+      'Dismiss Order Inquiry',
+      'Are you sure you want to dismiss and delete this customer inquiry from logs?',
+      async () => {
+        setIsActionLoading(true);
+        try {
+          await deleteInquiry(id);
+          await loadDatabase();
+          showToast('Inquiry log pruned successfully.', 'success');
+        } catch (err: any) {
+          showToast(`Dismissal failed: ${err.message || err}`, 'error');
+        } finally {
+          setIsActionLoading(false);
+        }
+      }
+    );
   };
 
   const handleUpdateInquiryStatus = async (id: string, status: 'New Order' | 'Contacted' | 'Confirmed' | 'Processing' | 'Delivered' | 'Cancelled') => {
-    await updateInquiryStatus(id, status);
-    await loadDatabase();
+    setIsActionLoading(true);
+    try {
+      await updateInquiryStatus(id, status);
+      await loadDatabase();
+      showToast(`Order status successfully updated to: ${status}`, 'success');
+    } catch (err: any) {
+      showToast(`Status update failed: ${err.message || err}`, 'error');
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   // LOGIN SCREEN
@@ -521,8 +720,73 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
 
   // DASHBOARD WORKSPACE STATE
   return (
-    <div id="admin-dashboard-container" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div id="admin-dashboard-container" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative">
       
+      {/* -------------------- DYNAMIC PREMIUM NOTIFICATIONS (TOASTS) -------------------- */}
+      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+        {toasts.map(t => (
+          <div key={t.id} className={`p-4 rounded-xl border shadow-xl flex items-start gap-3 pointer-events-auto animate-in slide-in-from-right-10 duration-300 ${
+            t.type === 'success' 
+              ? 'bg-[#f0fdf4] border-emerald-200 text-emerald-950' 
+              : t.type === 'error' 
+                ? 'bg-[#fef2f2] border-red-200 text-red-950' 
+                : 'bg-[#f0f9ff] border-blue-200 text-blue-950'
+          }`}>
+            <div className="flex-shrink-0 mt-0.5">
+              {t.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+              {t.type === 'error' && <AlertCircle className="w-5 h-5 text-red-600" />}
+              {t.type === 'info' && <Info className="w-5 h-5 text-blue-600" />}
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-semibold leading-relaxed">{t.message}</p>
+            </div>
+            <button 
+              onClick={() => setToasts(prev => prev.filter(item => item.id !== t.id))}
+              className="text-neutral-400 hover:text-neutral-700 cursor-pointer pointer-events-auto ml-1 font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* -------------------- DYNAMIC ACTION LOADING SPINNER OVERLAY -------------------- */}
+      {isActionLoading && (
+        <div className="fixed inset-0 bg-[#000]/40 backdrop-blur-xs flex items-center justify-center z-[100] animate-in fade-in duration-200">
+          <div className="bg-[#fff] border border-cream-100 p-6 rounded-2xl shadow-2xl flex flex-col items-center justify-center gap-3">
+            <Loader2 className="w-8 h-8 text-emerald-950 animate-spin" />
+            <p className="text-xs font-bold tracking-widest text-[#ab8215] uppercase animate-pulse">Syncing Boutique Database...</p>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------- CUSTOM CONFIRMATION DIALOG MODAL -------------------- */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 bg-[#000]/50 backdrop-blur-xs flex items-center justify-center p-4 z-[90] animate-in fade-in duration-200">
+          <div className="bg-[#fff] rounded-xl border border-cream-100 shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95 duration-200 text-center">
+            <div className="mx-auto w-12 h-12 bg-cream-50 rounded-full flex items-center justify-center text-red-600 mb-4 border border-cream-100">
+              <AlertTriangle className="w-6 h-6 animate-bounce" />
+            </div>
+            <h4 className="text-sm font-serif font-bold text-neutral-900 tracking-wide mb-1 uppercase tracking-wider">{confirmDialog.title}</h4>
+            <p className="text-xs text-neutral-500 leading-relaxed mb-6">{confirmDialog.message}</p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => setConfirmDialog(p => ({ ...p, isOpen: false }))}
+                className="px-4 py-2 text-xs font-bold text-neutral-600 uppercase tracking-widest hover:bg-neutral-100 rounded-lg cursor-pointer"
+              >
+                No, Cancel
+              </button>
+              <button
+                onClick={confirmDialog.onConfirm}
+                className="px-4 py-2 text-xs font-bold text-cream-50 uppercase tracking-widest bg-red-600 hover:bg-red-700 rounded-lg cursor-pointer shadow"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Upper Brand panel & Admin details */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-emerald-950 text-[#fff] p-6 rounded-2xl border border-emerald-900 shadow-lg mb-8">
         <div className="flex items-center gap-4">
@@ -620,16 +884,6 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
           >
             <Sparkles className="w-4.5 h-4.5" />
             <span>Website Settings</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('supabase')}
-            className={`w-full flex items-center gap-3.5 px-4 py-3 text-xs font-semibold tracking-wider uppercase rounded-lg cursor-pointer transition-all ${
-              activeTab === 'supabase' ? 'bg-emerald-900 text-cream-50 shadow-md' : 'text-neutral-700 hover:bg-cream-50'
-            }`}
-          >
-            <Terminal className="w-4.5 h-4.5 text-gold-500" />
-            <span>Supabase SQL</span>
           </button>
         </div>
 
@@ -854,14 +1108,16 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                       </h3>
                       <button 
                         onClick={() => setIsProductModalOpen(false)}
-                        className="text-neutral-300 hover:text-[#fff] bg-emerald-900/60 p-2 rounded-full cursor-pointer"
+                        className="text-neutral-300 hover:text-[#fff] bg-emerald-900/60 p-2 rounded-full cursor-pointer transition-colors"
                       >
                         ✕
                       </button>
                     </div>
 
-                    <form onSubmit={handleSaveProduct} className="p-6 space-y-5">
+                    <form onSubmit={handleSaveProduct} className="p-6 space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        {/* 1. Title */}
                         <div>
                           <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Product Title *</label>
                           <input
@@ -870,28 +1126,30 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                             value={prodTitle}
                             onChange={(e) => setProdTitle(e.target.value)}
                             placeholder="e.g. Isfahan Silk Tassel"
-                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
+                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800 focus:outline-none focus:ring-1 focus:ring-gold-500"
                           />
                         </div>
 
+                        {/* 2. Fabric detail */}
                         <div>
-                          <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Fabric Sizing details *</label>
+                          <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Fabric Info *</label>
                           <input
                             type="text"
                             required
                             value={prodFabric}
                             onChange={(e) => setProdFabric(e.target.value)}
-                            placeholder="e.g. Pure Tissue Silk"
-                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
+                            placeholder="e.g. Pure Tissue Silk / Luxury Lawn"
+                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800 focus:outline-none focus:ring-1 focus:ring-gold-500"
                           />
                         </div>
 
+                        {/* 3. Category Dropdown */}
                         <div>
                           <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Collection / Category *</label>
                           <select
                             value={prodCategory}
                             onChange={(e) => setProdCategory(e.target.value)}
-                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
+                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800 focus:outline-none focus:ring-1 focus:ring-gold-500 cursor-pointer"
                           >
                             {categories.map(c => (
                               <option key={c.id} value={c.slug}>{c.name}</option>
@@ -899,18 +1157,20 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                           </select>
                         </div>
 
+                        {/* 4. Stock status */}
                         <div>
                           <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Stock Status *</label>
                           <select
                             value={prodStock}
                             onChange={(e) => setProdStock(e.target.value as 'instock' | 'outofstock')}
-                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
+                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800 focus:outline-none focus:ring-1 focus:ring-gold-500 cursor-pointer"
                           >
                             <option value="instock">In Stock</option>
                             <option value="outofstock">Sold Out (Out of Stock)</option>
                           </select>
                         </div>
 
+                        {/* 5. Pricing (PKR) */}
                         <div>
                           <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Price (PKR) *</label>
                           <input
@@ -919,10 +1179,11 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                             value={prodPrice}
                             onChange={(e) => setProdPrice(Number(e.target.value))}
                             placeholder="e.g. 14500"
-                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
+                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800 focus:outline-none focus:ring-1 focus:ring-gold-500"
                           />
                         </div>
 
+                        {/* 6. Sale price */}
                         <div>
                           <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Sale Discount Price (PKR, Optional)</label>
                           <input
@@ -930,120 +1191,282 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                             value={prodSalePrice}
                             onChange={(e) => setProdSalePrice(e.target.value)}
                             placeholder="e.g. 11000"
-                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
+                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800 focus:outline-none focus:ring-1 focus:ring-gold-500"
                           />
                         </div>
 
+                        {/* 7. Auto Generated SKU */}
                         <div>
-                          <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">SKU *</label>
+                          <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-1">SKU (Auto-Generated)</label>
                           <input
                             type="text"
-                            required
+                            disabled
                             value={prodSku}
-                            onChange={(e) => setProdSku(e.target.value)}
-                            placeholder="MQ-LAWN-SORBET-03"
-                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
+                            className="w-full bg-neutral-100 border border-neutral-200 rounded-lg p-2.5 text-xs text-neutral-500 font-mono focus:outline-none cursor-not-allowed"
                           />
                         </div>
 
+                        {/* 8. Auto Generated Display ID */}
                         <div>
-                          <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Product Display ID *</label>
+                          <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Product Display ID (Auto-Generated)</label>
                           <input
                             type="text"
-                            required
+                            disabled
                             value={prodId}
-                            onChange={(e) => setProdId(e.target.value)}
-                            placeholder="MQ-RC-04"
-                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
+                            className="w-full bg-neutral-100 border border-neutral-200 rounded-lg p-2.5 text-xs text-neutral-500 font-mono focus:outline-none cursor-not-allowed"
                           />
                         </div>
 
+                        {/* 9. Interactive Sizes List (S, M, L, XL, Custom) */}
                         <div className="col-span-1 md:col-span-2">
-                          <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Primary Picture URL *</label>
+                          <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-2">Product Size Variations</label>
+                          <div className="flex flex-wrap gap-2">
+                            {['S', 'M', 'L', 'XL', 'Custom'].map((sz) => {
+                              const isChecked = prodSizes.includes(sz);
+                              return (
+                                <label key={sz} className={`flex items-center gap-1.5 px-4 py-2 border rounded-lg text-xs font-semibold cursor-pointer transition-all select-none ${
+                                  isChecked ? 'bg-emerald-950 border-emerald-950 text-cream-50 shadow-sm' : 'bg-[#fff] border-cream-200 text-neutral-700 hover:bg-cream-50'
+                                }`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      if (isChecked) {
+                                        setProdSizes(prodSizes.filter(s => s !== sz));
+                                      } else {
+                                        setProdSizes([...prodSizes, sz]);
+                                      }
+                                    }}
+                                    className="hidden"
+                                  />
+                                  <span>{sz}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          {prodSizes.length === 0 && (
+                            <p className="text-[10px] text-emerald-800 font-semibold mt-1">⚠ Select at least one size variation!</p>
+                          )}
+                        </div>
+
+                        {/* 10. Dynamic Custom Color Registry */}
+                        <div className="col-span-1 md:col-span-2">
+                          <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                            <Palette className="w-3.5 h-3.5 text-gold-600" />
+                            <span>Product Color Variations</span>
+                          </label>
+                          
                           <div className="flex gap-2">
                             <input
-                              type="url"
-                              required
-                              value={prodImages[0]}
-                              onChange={(e) => {
-                                const updated = [...prodImages];
-                                updated[0] = e.target.value;
-                                setProdImages(updated);
-                              }}
-                              className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
-                            />
-                            {/* File image uploader for Primary Image */}
-                            <label className="flex items-center justify-center px-3 bg-emerald-950 hover:bg-emerald-900 border border-emerald-900 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded-lg cursor-pointer whitespace-nowrap">
-                              <span>{isUploading === 'prod_primary' ? 'Uploading...' : 'Upload File'}</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    setIsUploading('prod_primary');
-                                    try {
-                                      const url = await uploadImage('product_images', file);
-                                      const updated = [...prodImages];
-                                      updated[0] = url;
-                                      setProdImages(updated);
-                                    } catch (err: any) {
-                                      alert(`Upload failed: ${err.message || err}`);
-                                    } finally {
-                                      setIsUploading(null);
-                                    }
+                              type="text"
+                              value={newColorInput}
+                              onChange={(e) => setNewColorInput(e.target.value)}
+                              placeholder="Type custom color (e.g. Classic Crimson, Emerald Breeze, Lilac Dew)"
+                              className="bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800 flex-1 focus:outline-none"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (newColorInput.trim() && !prodColors.includes(newColorInput.trim())) {
+                                    setProdColors([...prodColors, newColorInput.trim()]);
+                                    setNewColorInput('');
                                   }
-                                }}
-                                className="hidden"
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (newColorInput.trim() && !prodColors.includes(newColorInput.trim())) {
+                                  setProdColors([...prodColors, newColorInput.trim()]);
+                                  setNewColorInput('');
+                                }
+                              }}
+                              className="px-4 py-2 bg-emerald-950 text-cream-50 rounded-lg hover:bg-emerald-900 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer pointer-events-auto"
+                            >
+                              Add Color
+                            </button>
+                          </div>
+
+                          {prodColors.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5 mt-2.5">
+                              {prodColors.map((color) => (
+                                <span key={color} className="inline-flex items-center gap-1 px-3 py-1 bg-cream-100 text-neutral-800 rounded-full text-xs font-medium border border-cream-200 shadow-sm animate-in fade-in duration-200">
+                                  <span>{color}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setProdColors(prodColors.filter(c => c !== color))}
+                                    className="text-neutral-400 hover:text-emerald-900 transition-all cursor-pointer font-bold ml-1 w-4 h-4 rounded-full flex items-center justify-center hover:bg-cream-200"
+                                  >
+                                    ✕
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-neutral-400 mt-1.5">No custom colors specified. Customers will see classic boutique swatches.</p>
+                          )}
+                        </div>
+
+                        {/* 11. Multi-Media upload block (1 primary + 2 secondary + video) */}
+                        <div className="col-span-1 md:col-span-2 space-y-3">
+                          <h4 className="text-xs font-bold text-neutral-800 uppercase tracking-widest border-b border-cream-100 pb-1 flex items-center gap-1.5 font-serif">
+                            <Image className="w-4 h-4 text-emerald-950" />
+                            <span>Product Media & Video Showcase</span>
+                          </h4>
+
+                          <div className="bg-[#faf9f5] border border-cream-100 rounded-xl p-4 space-y-4">
+                            
+                            {/* YouTube Video URL */}
+                            <div>
+                              <label className="block text-[10px] font-bold text-[#ab8215] uppercase tracking-widest mb-1 flex items-center gap-1">
+                                <Video className="w-3.5 h-3.5" />
+                                <span>YouTube Video Link</span>
+                              </label>
+                              <input
+                                type="url"
+                                value={prodVideoUrl}
+                                onChange={(e) => setProdVideoUrl(e.target.value)}
+                                placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                                className="w-full bg-[#fff] border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800 focus:outline-none"
                               />
-                            </label>
+                            </div>
+
+                            {/* Main image */}
+                            <div>
+                              <label className="block text-[10px] font-bold text-neutral-600 uppercase tracking-widest mb-1">Primary Product Picture * (Main Gallery Image)</label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="url"
+                                  required
+                                  value={prodImages[0] || ''}
+                                  onChange={(e) => {
+                                    const updated = [...prodImages];
+                                    updated[0] = e.target.value;
+                                    setProdImages(updated);
+                                  }}
+                                  placeholder="Primary image asset URL"
+                                  className="w-full bg-[#fff] border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800 focus:outline-none"
+                                />
+                                <label className="flex items-center justify-center px-4 bg-emerald-950 hover:bg-emerald-900 border border-emerald-905 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded-lg cursor-pointer whitespace-nowrap transition-colors select-none">
+                                  <span>{isUploading === 'prod_primary' ? 'Uploading...' : 'Upload File'}</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        setIsUploading('prod_primary');
+                                        try {
+                                          const url = await uploadImage('product_images', file);
+                                          const updated = [...prodImages];
+                                          updated[0] = url;
+                                          setProdImages(updated);
+                                          showToast('Primary picture uploaded successfully!', 'info');
+                                        } catch (err: any) {
+                                          showToast(`Primary pic upload failed: ${err.message || err}`, 'error');
+                                        } finally {
+                                          setIsUploading(null);
+                                        }
+                                      }
+                                    }}
+                                    className="hidden"
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Additional image 1 */}
+                            <div>
+                              <label className="block text-[10px] font-bold text-neutral-600 uppercase tracking-widest mb-1">Additional Product Picture 1 (Details / Styling)</label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="url"
+                                  value={prodImages[1] || ''}
+                                  onChange={(e) => {
+                                    const updated = [...prodImages];
+                                    updated[1] = e.target.value;
+                                    setProdImages(updated);
+                                  }}
+                                  placeholder="Supplementary detail image URL"
+                                  className="w-full bg-[#fff] border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800 focus:outline-none"
+                                />
+                                <label className="flex items-center justify-center px-4 bg-emerald-950 hover:bg-emerald-900 border border-emerald-905 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded-lg cursor-pointer whitespace-nowrap transition-colors select-none">
+                                  <span>{isUploading === 'prod_sec_one' ? 'Uploading...' : 'Upload File'}</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        setIsUploading('prod_sec_one');
+                                        try {
+                                          const url = await uploadImage('product_images', file);
+                                          const updated = [...prodImages];
+                                          updated[1] = url;
+                                          setProdImages(updated);
+                                          showToast('Supplementary image 1 uploaded!', 'info');
+                                        } catch (err: any) {
+                                          showToast(`Upload 1 failed: ${err.message || err}`, 'error');
+                                        } finally {
+                                          setIsUploading(null);
+                                        }
+                                      }
+                                    }}
+                                    className="hidden"
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* Additional image 2 */}
+                            <div>
+                              <label className="block text-[10px] font-bold text-neutral-600 uppercase tracking-widest mb-1">Additional Product Picture 2 (Outfit / Material close-up)</label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="url"
+                                  value={prodImages[2] || ''}
+                                  onChange={(e) => {
+                                    const updated = [...prodImages];
+                                    updated[2] = e.target.value;
+                                    setProdImages(updated);
+                                  }}
+                                  placeholder="Secondary detail view image URL"
+                                  className="w-full bg-[#fff] border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800 focus:outline-none"
+                                />
+                                <label className="flex items-center justify-center px-4 bg-emerald-950 hover:bg-emerald-900 border border-emerald-905 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded-lg cursor-pointer whitespace-nowrap transition-colors select-none">
+                                  <span>{isUploading === 'prod_sec_two' ? 'Uploading...' : 'Upload File'}</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        setIsUploading('prod_sec_two');
+                                        try {
+                                          const url = await uploadImage('product_images', file);
+                                          const updated = [...prodImages];
+                                          updated[2] = url;
+                                          setProdImages(updated);
+                                          showToast('Supplementary image 2 uploaded!', 'info');
+                                        } catch (err: any) {
+                                          showToast(`Upload 2 failed: ${err.message || err}`, 'error');
+                                        } finally {
+                                          setIsUploading(null);
+                                        }
+                                      }
+                                    }}
+                                    className="hidden"
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
                           </div>
                         </div>
 
-                        <div className="col-span-1 md:col-span-2">
-                          <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Secondary Detail Picture URL (Optional)</label>
-                          <div className="flex gap-2">
-                            <input
-                              type="url"
-                              value={prodImages[1] || ''}
-                              onChange={(e) => {
-                                const updated = [...prodImages];
-                                updated[1] = e.target.value;
-                                setProdImages(updated);
-                              }}
-                              className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
-                              placeholder="https://images.unsplash.com/..."
-                            />
-                            {/* File image uploader for Secondary Image */}
-                            <label className="flex items-center justify-center px-3 bg-emerald-950 hover:bg-emerald-900 border border-emerald-900 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded-lg cursor-pointer whitespace-nowrap">
-                              <span>{isUploading === 'prod_secondary' ? 'Uploading...' : 'Upload File'}</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    setIsUploading('prod_secondary');
-                                    try {
-                                      const url = await uploadImage('product_images', file);
-                                      const updated = [...prodImages];
-                                      updated[1] = url;
-                                      setProdImages(updated);
-                                    } catch (err: any) {
-                                      alert(`Upload failed: ${err.message || err}`);
-                                    } finally {
-                                      setIsUploading(null);
-                                    }
-                                  }
-                                }}
-                                className="hidden"
-                              />
-                            </label>
-                          </div>
-                        </div>
                       </div>
 
-                      {/* AI GENERATED TEXT AREA */}
+                      {/* Description System Text Area */}
                       <div className="border border-gold-200 bg-[#faf9f5] rounded-xl p-4 space-y-3">
                         <div className="flex justify-between items-center">
                           <label className="block text-xs font-bold text-emerald-950 uppercase tracking-widest flex items-center gap-1.5 font-serif">
@@ -1055,7 +1478,7 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                             onClick={generateAIDescription}
                             id="btn-gemini-desc-suggest"
                             disabled={isAiGenerating}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950 hover:bg-emerald-900 hover:shadow disabled:bg-neutral-400 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded-full pointer-events-auto cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950 hover:bg-emerald-900 hover:shadow disabled:bg-neutral-400 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded-full pointer-events-auto cursor-pointer transition-all"
                           >
                             <RefreshCw className={`w-3 h-3 ${isAiGenerating ? 'animate-spin' : ''}`} />
                             <span>{isAiGenerating ? 'Gemini composing...' : 'Suggest description (AI)'}</span>
@@ -1063,31 +1486,32 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                         </div>
                         
                         {aiError && (
-                          <p className="text-[10px] text-emerald-800 bg-emerald-100 rounded border border-emerald-200 px-2 py-1 select-none">
+                          <p className="text-[10px] text-emerald-800 bg-emerald-100 rounded border border-emerald-200 px-2 py-1 select-none animate-bounce">
                             ℹ {aiError}
                           </p>
                         )}
 
                         <textarea
-                          rows={4}
+                          rows={6}
                           required
                           value={prodDesc}
                           onChange={(e) => setProdDesc(e.target.value)}
                           placeholder="A detailed Eastern ensemble decorated meticulously in pure threadwork..."
-                          className="w-full bg-[#fff] border border-cream-200 rounded-lg p-3 text-xs text-neutral-800 focus:outline-none"
+                          className="w-full bg-[#fff] border border-cream-200 rounded-lg p-3 text-xs text-neutral-800 focus:outline-none focus:ring-1 focus:ring-gold-500 font-sans leading-relaxed"
                         ></textarea>
                       </div>
 
+                      {/* Featured Promote Toggle */}
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
                           id="chk-prod-featured"
                           checked={prodFeatured}
                           onChange={(e) => setProdFeatured(e.target.checked)}
-                          className="w-4 h-4 rounded text-emerald-900 focus:ring-emerald-800"
+                          className="w-4 h-4 rounded text-emerald-900 border-cream-300 focus:ring-emerald-800 cursor-pointer pointer-events-auto"
                         />
                         <label htmlFor="chk-prod-featured" className="text-xs font-bold text-neutral-700 uppercase tracking-widest select-none cursor-pointer">
-                          Promote This Outfits in Featured Showcase Tabs
+                          Promote This Outfit in Homepage Featured Showcase Tabs
                         </label>
                       </div>
 
@@ -1103,7 +1527,7 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                         <button
                           type="submit"
                           id="btn-save-outfit"
-                          className="px-5 py-2 bg-emerald-950 hover:bg-emerald-900 text-cream-50 rounded-lg text-xs font-bold tracking-wider uppercase transition-colors pointer-events-auto cursor-pointer shadow flex items-center gap-1"
+                          className="px-5 py-2 bg-emerald-950 hover:bg-emerald-900 text-cream-50 rounded-lg text-xs font-bold tracking-wider uppercase transition-colors pointer-events-auto cursor-pointer shadow flex items-center gap-1.5"
                         >
                           <Save className="w-3.5 h-3.5" />
                           <span>Save Outfit</span>
@@ -1688,19 +2112,6 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                   </button>
                 </div>
               </form>
-            </div>
-          )}
-
-          {/* TAB 7: SUPABASE MIGRATION SQL CODE block */}
-          {activeTab === 'supabase' && (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="bg-[#fff] border border-cream-100 p-5 rounded-xl shadow-sm space-y-2">
-                <h2 className="text-md font-serif font-bold text-emerald-950 uppercase tracking-wider">Supabase database provisioning schema</h2>
-                <p className="text-xs text-neutral-500 leading-relaxed">
-                  Mushq Outfits utilizes a fully reactive client engine backed by `localStorage` for rapid iframe previews. For production builds, copy-paste the SQL terminal triggers directly into your Supabase Dashboard SQL Editor to establish durable records with Row Level Security policies!
-                </p>
-              </div>
-              <SupabaseCode />
             </div>
           )}
 

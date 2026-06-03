@@ -21,6 +21,8 @@ export interface Product {
   fabric: string; // e.g. Chiffon, Cotton Lawn, Linen
   sizeInfo?: string[]; // e.g. ['S', 'M', 'L', 'XL', 'Custom']
   deliveryInfo?: string; // custom delivery text
+  videoUrl?: string; // YouTube video link or ID
+  colors?: string[]; // manually added custom colors
   createdAt: string;
 }
 

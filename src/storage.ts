@@ -93,23 +93,42 @@ export const seedIfEmpty = async () => {
 };
 
 // Converters inside storage layer
-const mapProductFromDB = (p: any): Product => ({
-  id: p.id,
-  title: p.title,
-  description: p.description,
-  price: p.price,
-  salePrice: p.sale_price || undefined,
-  category: p.category,
-  images: Array.isArray(p.images) ? p.images : (typeof p.images === 'string' ? JSON.parse(p.images) : []),
-  stockStatus: p.stock_status,
-  sku: p.sku,
-  productId: p.product_id,
-  isFeatured: p.is_featured,
-  fabric: p.fabric || '',
-  sizeInfo: p.sizes || [],
-  deliveryInfo: p.delivery_info || undefined,
-  createdAt: p.created_at
-});
+const mapProductFromDB = (p: any): Product => {
+  let deliveryText = p.delivery_info || undefined;
+  let videoUrl: string | undefined = undefined;
+  let colors: string[] | undefined = undefined;
+
+  if (p.delivery_info && p.delivery_info.trim().startsWith('{')) {
+    try {
+      const extra = JSON.parse(p.delivery_info);
+      deliveryText = extra.deliveryInfo || undefined;
+      videoUrl = extra.videoUrl || undefined;
+      colors = extra.colors || undefined;
+    } catch (e) {
+      console.warn('Failed parsing json delivery_info:', e);
+    }
+  }
+
+  return {
+    id: p.id,
+    title: p.title,
+    description: p.description,
+    price: p.price,
+    salePrice: p.sale_price || undefined,
+    category: p.category,
+    images: Array.isArray(p.images) ? p.images : (typeof p.images === 'string' ? JSON.parse(p.images) : []),
+    stockStatus: p.stock_status,
+    sku: p.sku,
+    productId: p.product_id,
+    isFeatured: p.is_featured,
+    fabric: p.fabric || '',
+    sizeInfo: p.sizes || [],
+    deliveryInfo: deliveryText,
+    videoUrl,
+    colors,
+    createdAt: p.created_at
+  };
+};
 
 const mapCategoryFromDB = (c: any): Category => ({
   id: c.id,
@@ -174,6 +193,12 @@ export const getProducts = async (): Promise<Product[]> => {
 };
 
 export const saveProduct = async (product: Product): Promise<Product[]> => {
+  const deliveryPayload = JSON.stringify({
+    deliveryInfo: product.deliveryInfo || '',
+    videoUrl: product.videoUrl || '',
+    colors: product.colors || []
+  });
+
   const dbPayload = {
     title: product.title,
     description: product.description,
@@ -187,7 +212,7 @@ export const saveProduct = async (product: Product): Promise<Product[]> => {
     is_featured: product.isFeatured || false,
     fabric: product.fabric,
     sizes: product.sizeInfo || ['S', 'M', 'L', 'XL'],
-    delivery_info: product.deliveryInfo || null
+    delivery_info: deliveryPayload
   };
 
   if (product.id && !product.id.startsWith('pro_')) {

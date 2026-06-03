@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, MessageSquare, ShieldCheck, Sparkles, MapPin, Ruler, HelpCircle, Check, ShoppingBag } from 'lucide-react';
+import { ChevronLeft, MessageSquare, ShieldCheck, Sparkles, MapPin, Ruler, HelpCircle, Check, ShoppingBag, Video, Palette } from 'lucide-react';
 import { Product, Inquiry } from '../types';
 
 interface ProductDetailsProps {
@@ -17,6 +17,8 @@ export default function ProductDetails({
 }: ProductDetailsProps) {
   const [activeImage, setActiveImage] = useState(product.images[0]);
   const [selectedSize, setSelectedSize] = useState<string>(product.sizeInfo?.[0] || 'Unstitched');
+  const [selectedColor, setSelectedColor] = useState<string>(product.colors?.[0] || '');
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   
@@ -75,6 +77,10 @@ ${productUrl}`;
       message += `\n\nMeasurements (Custom Stitching):\n- Bust: ${bustSize || 'Standard'} in\n- Shirt Length: ${shirtLength || 'Standard'} in\n- Waist: ${waistSize || 'Standard'} in\n- Trouser Length: ${trouserLength || 'Standard'} in`;
     } else {
       message += `\n\nSelected Size: ${selectedSize}`;
+    }
+
+    if (selectedColor) {
+      message += `\nSelected Color Variation: ${selectedColor}`;
     }
 
     message += `\n\nCustomer Details:\n- Name: ${customerName}`;
@@ -145,6 +151,17 @@ ${productUrl}`;
               <span className="absolute top-4 left-4 bg-rose-700 text-[#fff] text-[10px] font-extrabold tracking-widest px-3 py-1.5 rounded uppercase">
                 SALE ACTIVED
               </span>
+            )}
+            {product.videoUrl && (
+              <button 
+                type="button"
+                onClick={() => setIsVideoPlaying(true)}
+                title="Watch outfit walk-through video"
+                className="absolute top-4 right-4 bg-[#000]/60 backdrop-blur-md hover:bg-emerald-950 text-gold-400 p-3 rounded-full hover:shadow-lg transition-all hover:scale-105 cursor-pointer border border-[#fff]/10 flex items-center gap-2 overflow-hidden max-w-[44px] hover:max-w-[150px] transition-all duration-300 group"
+              >
+                <Video className="w-4 h-4 text-gold-400 shrink-0" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-cream-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">Play Video</span>
+              </button>
             )}
             <span className="absolute bottom-4 right-4 bg-emerald-950/80 backdrop-blur-sm text-cream-50 text-[10px] tracking-wide px-3 py-1 bg-opacity-70 rounded-full font-mono">
               SKU: {product.sku}
@@ -268,6 +285,35 @@ ${productUrl}`;
               <Sparkles className="w-4 h-4 text-gold-500" />
               <span>Instant WhatsApp Checkout</span>
             </h3>
+
+            {/* Color Variations selected block */}
+            {product.colors && product.colors.length > 0 && (
+              <div className="mb-4 animate-in fade-in duration-200">
+                <label className="block text-xs font-bold text-neutral-700 tracking-wide uppercase mb-2 flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-gold-600" />
+                  <span>Choose Color Variation *</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {product.colors.map((color) => {
+                    const isSelected = selectedColor === color;
+                    return (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setSelectedColor(color)}
+                        className={`px-3 py-2 rounded text-xs font-semibold tracking-wide border cursor-pointer select-none transition-all ${
+                          isSelected
+                            ? 'bg-emerald-950 border-emerald-950 text-cream-50 shadow-md scale-[1.02]'
+                            : 'bg-[#fff] border-cream-200 text-neutral-700 hover:border-gold-300'
+                        }`}
+                      >
+                        {color}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Size checklist */}
             <div className="mb-4">
@@ -420,6 +466,67 @@ ${productUrl}`;
         </div>
 
       </div>
+
+      {/* -------------------- BOUTIQUE VIDEO PATH LIGHTBOX -------------------- */}
+      {isVideoPlaying && product.videoUrl && (
+        <div className="fixed inset-0 bg-[#000]/80 backdrop-blur-md flex items-center justify-center p-4 z-[95] animate-in fade-in duration-200">
+          <div className="bg-[#111] rounded-2xl w-full max-w-3xl overflow-hidden border border-neutral-800 shadow-2xl relative animate-in zoom-in-95 duration-200">
+            {/* Lightbox header with close */}
+            <div className="px-5 py-3 bg-[#1e1e1e] text-neutral-300 flex items-center justify-between border-b border-neutral-800">
+              <span className="text-xs font-bold uppercase tracking-widest text-gold-400 flex items-center gap-1.5 font-serif">
+                <Video className="w-4 h-4 text-gold-400" />
+                <span>Boutique Video Walkthrough: {product.title}</span>
+              </span>
+              <button
+                onClick={() => setIsVideoPlaying(false)}
+                className="text-neutral-400 hover:text-[#fff] px-3 py-1.5 bg-neutral-800/60 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer hover:bg-neutral-800"
+              >
+                ✕ Close Player
+              </button>
+            </div>
+            {/* Video iframe content */}
+            <div className="relative aspect-video bg-[#000]">
+              {(() => {
+                let id = '';
+                const url = product.videoUrl;
+                if (url.includes('youtu.be/')) {
+                  id = url.split('youtu.be/')[1]?.split('?')[0] || '';
+                } else if (url.includes('youtube.com/watch')) {
+                  id = url.split('v=')[1]?.split('&')[0] || '';
+                } else if (url.includes('youtube.com/embed/')) {
+                  id = url.split('embed/')[1]?.split('?')[0] || '';
+                }
+                const embedUrl = id ? `https://www.youtube.com/embed/${id}` : null;
+                
+                return embedUrl ? (
+                  <iframe
+                    src={`${embedUrl}?autoplay=1&rel=0`}
+                    title="Boutique Walkthrough Video"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="absolute inset-0 w-full h-full"
+                  ></iframe>
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
+                    <Video className="w-10 h-10 text-neutral-650 animate-pulse" />
+                    <p className="text-xs font-semibold text-neutral-400">Playable video feed available at:</p>
+                    <a 
+                      href={product.videoUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-gold-500 hover:underline break-all"
+                    >
+                      {product.videoUrl}
+                    </a>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
