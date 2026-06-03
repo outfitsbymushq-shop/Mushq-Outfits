@@ -16,6 +16,8 @@ interface HeaderProps {
   onOpenCart: () => void;
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
+  storeName?: string;
+  whatsappNumber?: string;
 }
 
 export default function Header({
@@ -31,7 +33,9 @@ export default function Header({
   cartCount,
   onOpenCart,
   mobileMenuOpen,
-  setMobileMenuOpen
+  setMobileMenuOpen,
+  storeName = 'Mushq Outfits',
+  whatsappNumber = '+92 302 0038010'
 }: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -52,7 +56,7 @@ export default function Header({
       <div className="bg-emerald-950 text-[#fff] py-2 px-3 text-center text-[9px] sm:text-xs font-medium tracking-[0.1em] sm:tracking-[0.18em] uppercase flex items-center justify-center gap-1.5 sm:gap-2 leading-tight break-all">
         <Sparkles className="w-3 h-3 text-gold-400 animate-pulse shrink-0" />
         <span className="truncate max-w-[85vw] sm:max-w-none">LUXURY FESTIVE STITCHING & NATIONWIDE FREE SHIPPING ON INQUIRIES</span>
-        <span className="hidden md:inline">| DIRECT WHATSAPP RESPONSE +92 302 0038010</span>
+        <span className="hidden md:inline">| DIRECT WHATSAPP RESPONSE {whatsappNumber}</span>
       </div>
 
       {/* Main navigation area */}
@@ -86,10 +90,10 @@ export default function Header({
           onClick={handleLogoClick}
         >
           <h1 className="text-lg sm:text-2xl md:text-3.5xl font-serif tracking-[0.15em] sm:tracking-[0.2em] uppercase text-emerald-950 leading-none">
-            Mushq
+            {storeName.split(' ')[0]}
           </h1>
           <span className="text-[6.5px] sm:text-[7.5px] md:text-[8px] tracking-[0.3em] sm:tracking-[0.45em] uppercase -mt-0.5 font-bold text-gold-500 block">
-            Luxury Outfits
+            {storeName.split(' ').slice(1).join(' ') || 'Luxury Outfits'}
           </span>
         </div>
 

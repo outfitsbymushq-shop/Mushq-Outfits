@@ -4,9 +4,18 @@ import { MapPin, Phone, MessageSquare, Facebook, Instagram, ShieldCheck, Truck, 
 interface FooterProps {
   onSelectCategory: (categorySlug: string) => void;
   onChangeView: (view: 'home' | 'shop' | 'admin') => void;
+  storeName?: string;
+  whatsappNumber?: string;
+  facebookLink?: string;
 }
 
-export default function Footer({ onSelectCategory, onChangeView }: FooterProps) {
+export default function Footer({ 
+  onSelectCategory, 
+  onChangeView,
+  storeName = 'Mushq Outfits',
+  whatsappNumber = '+92 302 0038010',
+  facebookLink = 'https://facebook.com/mushqpk'
+}: FooterProps) {
   const handleNav = (slug: string) => {
     onSelectCategory(slug);
     onChangeView('shop');
@@ -65,24 +74,26 @@ export default function Footer({ onSelectCategory, onChangeView }: FooterProps) 
         {/* Brand identity column */}
         <div className="flex flex-col gap-5">
           <div className="flex flex-col">
-            <span className="text-2xl font-serif font-bold tracking-[0.2em] text-emerald-950">Mushq</span>
-            <span className="text-[9px] tracking-[0.4em] text-gold-500 font-bold uppercase -mt-0.5">Luxury Outfits</span>
+            <span className="text-2xl font-serif font-bold tracking-[0.2em] text-emerald-950">{storeName.split(' ')[0]}</span>
+            <span className="text-[9px] tracking-[0.4em] text-gold-500 font-bold uppercase -mt-0.5">{storeName.split(' ').slice(1).join(' ') || 'Luxury Outfits'}</span>
           </div>
           <p className="text-xs text-neutral-500 leading-relaxed font-sans mt-2">
-            Immerse yourself in authentic haute couture with premium Pakistani handcrafting, traditional zari thread-work, opulent festive colors, and flawless bespoke stitching.
+            Immerse yourself in authentic Eastern high fashion with premium handcrafting, traditional thread decoration, and flawless bespoke sizing.
           </p>
           <div className="flex items-center gap-3 mt-4">
+            {facebookLink && (
+              <a 
+                href={facebookLink} 
+                target="_blank" 
+                rel="noreferrer noopener"
+                id="footer-facebook"
+                className="w-9 h-9 border border-cream-150 flex items-center justify-center text-emerald-950 hover:text-gold-600 hover:border-gold-500 transition-all cursor-pointer bg-white animate-in"
+              >
+                <Facebook className="w-4 h-4" />
+              </a>
+            )}
             <a 
-              href="https://www.facebook.com/share/1bpvozkJBQ/" 
-              target="_blank" 
-              rel="noreferrer noopener"
-              id="footer-facebook"
-              className="w-9 h-9 border border-cream-150 flex items-center justify-center text-emerald-950 hover:text-gold-600 hover:border-gold-500 transition-all cursor-pointer bg-white"
-            >
-              <Facebook className="w-4 h-4" />
-            </a>
-            <a 
-              href="https://wa.me/923020038010" 
+              href={`https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}`} 
               target="_blank" 
               rel="noreferrer noopener"
               id="footer-whatsapp"
@@ -137,14 +148,14 @@ export default function Footer({ onSelectCategory, onChangeView }: FooterProps) 
             <li className="flex gap-3 leading-relaxed">
               <MapPin className="w-4.5 h-4.5 text-gold-600 shrink-0" />
               <span>
-                <strong className="text-emerald-950">Mushq Flagship Boutique</strong><br />
+                <strong className="text-emerald-950">{storeName} Flagship Boutique</strong><br />
                 Clifton, Marine Drive Area,<br />
                 Karachi, Sindh, Pakistan
               </span>
             </li>
             <li className="flex items-center gap-3">
               <Phone className="w-4 h-4 text-gold-600" />
-              <span>+92 302 0038 010</span>
+              <span>{whatsappNumber}</span>
             </li>
             <li className="flex items-center gap-3">
               <MessageSquare className="w-4 h-4 text-gold-600" />
@@ -170,7 +181,7 @@ export default function Footer({ onSelectCategory, onChangeView }: FooterProps) 
 
       {/* Deep footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 border-t border-cream-150 flex flex-col md:flex-row items-center justify-between text-xs text-neutral-500 gap-4">
-        <p>© 2026 Mushq Outfits Karachi. All Rights Reserved. Custom Eastern Haute Couture.</p>
+        <p>© 2026 {storeName} Karachi. All Rights Reserved. Custom Eastern Haute Couture.</p>
         <div className="flex flex-wrap items-center gap-4 sm:gap-6">
           <span className="text-neutral-400 font-medium">Bespoke WhatsApp Luxury Boutique & Retailer</span>
           <button 

@@ -11,8 +11,10 @@ import {
   getCategories, saveCategory, deleteCategory,
   getBanners, saveBanner, deleteBanner,
   getInquiries, addInquiry, deleteInquiry, updateInquiryStatus,
-  getSEO, saveSEO, getReviews, getVisitors
+  getSEO, saveSEO, getReviews, getVisitors,
+  getWebsiteSettings, saveWebsiteSettings, uploadImage
 } from '../storage';
+import { supabase } from '../supabaseClient';
 import SupabaseCode from './SupabaseCode';
 
 interface AdminPanelProps {
@@ -40,6 +42,12 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
   });
   const [reviewsCount, setReviewsCount] = useState(0);
   const [visitorsCount, setVisitorsCount] = useState(0);
+
+  // Expanded Website Settings
+  const [storeName, setStoreName] = useState('Mushq Outfits');
+  const [whatsappNumber, setWhatsappNumber] = useState('+92 302 0038010');
+  const [facebookLink, setFacebookLink] = useState('https://facebook.com/mushqpk');
+  const [isUploading, setIsUploading] = useState<string | null>(null);
 
   // Form states - Products
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -79,35 +87,127 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
   const [bannerActive, setBannerActive] = useState(true);
 
   // Load and refresh state
-  const loadDatabase = () => {
-    setProducts(getProducts());
-    setCategories(getCategories());
-    setBanners(getBanners());
-    setInquiries(getInquiries());
-    setSeo(getSEO());
-    setReviewsCount(getReviews().length);
-    setVisitorsCount(getVisitors());
-  };
+  const loadDatabase = async () => {
+    try {
+      const prods = await getProducts();
+      setProducts(prods);
+      const cats = await getCategories();
+      setCategories(cats);
+      const bans = await getBanners();
+      setBanners(bans);
+      const inqs = await getInquiries();
+      setInquiries(inqs);
+      const s = await getSEO();
+      setSeo(s);
 
-  useEffect(() => {
-    loadDatabase();
-  }, []);
+      const setts = await getWebsiteSettings();
+      setStoreName(setts.storeName);
+      setWhatsappNumber(setts.whatsappNumber);
+      setFacebookLink(setts.facebookLink);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email === 'admin@mushq.pk' && password === 'mushq-luxury') {
-      setIsAuthenticated(true);
-      setAuthError('');
-    } else {
-      setAuthError('Incorrect luxury credentials. Please double check.');
+      const revs = await getReviews();
+      setReviewsCount(revs.length);
+      const v = await getVisitors();
+      setVisitorsCount(v);
+    } catch (e) {
+      console.error('Failed loading database in Admin:', e);
     }
   };
 
-  const handleQuickLogin = () => {
-    setEmail('admin@mushq.pk');
-    setPassword('mushq-luxury');
-    setIsAuthenticated(true);
+  useEffect(() => {
+    // Check if user is already authenticated in Supabase session
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user) {
+        setIsAuthenticated(true);
+        loadDatabase();
+      } else {
+        setIsAuthenticated(false);
+      }
+    };
+    checkUser();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setAuthError('');
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (error) {
+        // Auto-signup option for seamless out of the box credentials experience
+        if (error.message.toLowerCase().includes('invalid login credentials') || error.status === 400) {
+          const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+            email,
+            password
+          });
+          if (signUpErr) {
+            setAuthError(`Supabase Auth credentials error: ${error.message}`);
+            return;
+          }
+          if (signUpData?.user) {
+            // Re-attempt sign in on successful provision
+            const { data: retryData, error: retryErr } = await supabase.auth.signInWithPassword({ email, password });
+            if (retryErr) {
+              setAuthError(retryErr.message);
+            } else {
+              setIsAuthenticated(true);
+              await loadDatabase();
+            }
+            return;
+          }
+        }
+        setAuthError(error.message);
+      } else if (data?.user) {
+        setIsAuthenticated(true);
+        await loadDatabase();
+      }
+    } catch (err: any) {
+      setAuthError(err.message || 'Authentication failed.');
+    }
+  };
+
+  const handleQuickLogin = async () => {
+    const adminEmail = 'admin@mushq.pk';
+    const adminPassword = 'mushq-luxury';
+    setEmail(adminEmail);
+    setPassword(adminPassword);
+    setAuthError('');
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: adminEmail,
+        password: adminPassword
+      });
+      if (error) {
+        // If they don't exist yet, auto-provision
+        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+          email: adminEmail,
+          password: adminPassword
+        });
+        if (signUpErr) {
+          setAuthError(`Auto-provision failed: ${signUpErr.message}`);
+          return;
+        }
+        const { data: retryData, error: retryErr } = await supabase.auth.signInWithPassword({
+          email: adminEmail,
+          password: adminPassword
+        });
+        if (retryErr) {
+          setAuthError(retryErr.message);
+        } else {
+          setIsAuthenticated(true);
+          await loadDatabase();
+        }
+      } else {
+        setIsAuthenticated(true);
+        await loadDatabase();
+      }
+    } catch (err: any) {
+      setAuthError(err?.message || 'Quick login failed.');
+    }
   };
 
   // PRODUCTS MANAGER SAVE/DELETE
@@ -146,7 +246,7 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
     setIsProductModalOpen(true);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const newProduct: Product = {
       id: editingProduct ? editingProduct.id : 'pro_' + Date.now(),
@@ -164,24 +264,24 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
       isFeatured: prodFeatured,
       createdAt: editingProduct ? editingProduct.createdAt : new Date().toISOString()
     };
-    saveProduct(newProduct);
-    loadDatabase();
+    await saveProduct(newProduct);
+    await loadDatabase();
     onDatabaseUpdate();
     setIsProductModalOpen(false);
   };
 
-  const handleDeleteProduct = (id: string) => {
+  const handleDeleteProduct = async (id: string) => {
     if (confirm('Are you sure you want to delete this exquisite product?')) {
-      deleteProduct(id);
-      loadDatabase();
+      await deleteProduct(id);
+      await loadDatabase();
       onDatabaseUpdate();
     }
   };
 
-  const handleToggleProductFeatured = (p: Product) => {
+  const handleToggleProductFeatured = async (p: Product) => {
     const updated = { ...p, isFeatured: !p.isFeatured };
-    saveProduct(updated);
-    loadDatabase();
+    await saveProduct(updated);
+    await loadDatabase();
     onDatabaseUpdate();
   };
 
@@ -256,7 +356,7 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
     setIsCategoryModalOpen(true);
   };
 
-  const handleSaveCategory = (e: React.FormEvent) => {
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     const newCat: Category = {
       id: editingCategory ? editingCategory.id : 'cat_' + Date.now(),
@@ -265,16 +365,16 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
       description: catDesc,
       image: catImage
     };
-    saveCategory(newCat);
-    loadDatabase();
+    await saveCategory(newCat);
+    await loadDatabase();
     onDatabaseUpdate();
     setIsCategoryModalOpen(false);
   };
 
-  const handleDeleteCategory = (id: string) => {
+  const handleDeleteCategory = async (id: string) => {
     if (confirm('Delete this category? Associated products may lose indexing.')) {
-      deleteCategory(id);
-      loadDatabase();
+      await deleteCategory(id);
+      await loadDatabase();
       onDatabaseUpdate();
     }
   };
@@ -300,7 +400,7 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
     setIsBannerModalOpen(true);
   };
 
-  const handleSaveBanner = (e: React.FormEvent) => {
+  const handleSaveBanner = async (e: React.FormEvent) => {
     e.preventDefault();
     const newBanner: Banner = {
       id: editingBanner ? editingBanner.id : 'banner_' + Date.now(),
@@ -310,39 +410,44 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
       link: bannerLink,
       isActive: bannerActive
     };
-    saveBanner(newBanner);
-    loadDatabase();
+    await saveBanner(newBanner);
+    await loadDatabase();
     onDatabaseUpdate();
     setIsBannerModalOpen(false);
   };
 
-  const handleDeleteBanner = (id: string) => {
+  const handleDeleteBanner = async (id: string) => {
     if (confirm('Remove this promotional banner?')) {
-      deleteBanner(id);
-      loadDatabase();
+      await deleteBanner(id);
+      await loadDatabase();
       onDatabaseUpdate();
     }
   };
 
-  // SEO SAVE
-  const handleSaveSEOConfig = (e: React.FormEvent) => {
+  // SEO SAVE & WEBSITE SETTINGS
+  const handleSaveSEOConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    saveSEO(seo);
-    alert('SEO meta headers successfully compiled into root structure.');
-    loadDatabase();
+    await saveSEO(seo);
+    await saveWebsiteSettings({
+      storeName,
+      whatsappNumber,
+      facebookLink
+    });
+    alert('Website configurations and SEO meta headers successfully saved to Supabase!');
+    await loadDatabase();
   };
 
   // INQUIRIES DELETE
-  const handleDeleteInquiryLog = (id: string) => {
+  const handleDeleteInquiryLog = async (id: string) => {
     if (confirm('Dismiss this inquiry registry?')) {
-      deleteInquiry(id);
-      loadDatabase();
+      await deleteInquiry(id);
+      await loadDatabase();
     }
   };
 
-  const handleUpdateInquiryStatus = (id: string, status: 'New Order' | 'Contacted' | 'Confirmed' | 'Processing' | 'Delivered' | 'Cancelled') => {
-    updateInquiryStatus(id, status);
-    loadDatabase();
+  const handleUpdateInquiryStatus = async (id: string, status: 'New Order' | 'Contacted' | 'Confirmed' | 'Processing' | 'Delivered' | 'Cancelled') => {
+    await updateInquiryStatus(id, status);
+    await loadDatabase();
   };
 
   // LOGIN SCREEN
@@ -514,7 +619,7 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
             }`}
           >
             <Sparkles className="w-4.5 h-4.5" />
-            <span>SEO Manager</span>
+            <span>Website Settings</span>
           </button>
 
           <button
@@ -855,32 +960,86 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
 
                         <div className="col-span-1 md:col-span-2">
                           <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Primary Picture URL *</label>
-                          <input
-                            type="url"
-                            required
-                            value={prodImages[0]}
-                            onChange={(e) => {
-                              const updated = [...prodImages];
-                              updated[0] = e.target.value;
-                              setProdImages(updated);
-                            }}
-                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
-                          />
+                          <div className="flex gap-2">
+                            <input
+                              type="url"
+                              required
+                              value={prodImages[0]}
+                              onChange={(e) => {
+                                const updated = [...prodImages];
+                                updated[0] = e.target.value;
+                                setProdImages(updated);
+                              }}
+                              className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
+                            />
+                            {/* File image uploader for Primary Image */}
+                            <label className="flex items-center justify-center px-3 bg-emerald-950 hover:bg-emerald-900 border border-emerald-900 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded-lg cursor-pointer whitespace-nowrap">
+                              <span>{isUploading === 'prod_primary' ? 'Uploading...' : 'Upload File'}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setIsUploading('prod_primary');
+                                    try {
+                                      const url = await uploadImage('product_images', file);
+                                      const updated = [...prodImages];
+                                      updated[0] = url;
+                                      setProdImages(updated);
+                                    } catch (err: any) {
+                                      alert(`Upload failed: ${err.message || err}`);
+                                    } finally {
+                                      setIsUploading(null);
+                                    }
+                                  }
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
                         </div>
 
                         <div className="col-span-1 md:col-span-2">
                           <label className="block text-xs font-bold text-neutral-700 uppercase tracking-widest mb-1">Secondary Detail Picture URL (Optional)</label>
-                          <input
-                            type="url"
-                            value={prodImages[1] || ''}
-                            onChange={(e) => {
-                              const updated = [...prodImages];
-                              updated[1] = e.target.value;
-                              setProdImages(updated);
-                            }}
-                            className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
-                            placeholder="https://images.unsplash.com/..."
-                          />
+                          <div className="flex gap-2">
+                            <input
+                              type="url"
+                              value={prodImages[1] || ''}
+                              onChange={(e) => {
+                                const updated = [...prodImages];
+                                updated[1] = e.target.value;
+                                setProdImages(updated);
+                              }}
+                              className="w-full bg-cream-50 border border-cream-200 rounded-lg p-2.5 text-xs text-neutral-800"
+                              placeholder="https://images.unsplash.com/..."
+                            />
+                            {/* File image uploader for Secondary Image */}
+                            <label className="flex items-center justify-center px-3 bg-emerald-950 hover:bg-emerald-900 border border-emerald-900 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded-lg cursor-pointer whitespace-nowrap">
+                              <span>{isUploading === 'prod_secondary' ? 'Uploading...' : 'Upload File'}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setIsUploading('prod_secondary');
+                                    try {
+                                      const url = await uploadImage('product_images', file);
+                                      const updated = [...prodImages];
+                                      updated[1] = url;
+                                      setProdImages(updated);
+                                    } catch (err: any) {
+                                      alert(`Upload failed: ${err.message || err}`);
+                                    } finally {
+                                      setIsUploading(null);
+                                    }
+                                  }
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
                         </div>
                       </div>
 
@@ -1053,13 +1212,38 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
 
                       <div>
                         <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Visual cover URL</label>
-                        <input
-                          type="url"
-                          required
-                          value={catImage}
-                          onChange={(e) => setCatImage(e.target.value)}
-                          className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800"
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="url"
+                            required
+                            value={catImage}
+                            onChange={(e) => setCatImage(e.target.value)}
+                            className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800"
+                          />
+                          {/* File image uploader for Category Image */}
+                          <label className="flex items-center justify-center px-3 bg-emerald-950 hover:bg-emerald-900 border border-emerald-900 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded cursor-pointer whitespace-nowrap">
+                            <span>{isUploading === 'cat_img' ? 'Uploading...' : 'Upload Link'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setIsUploading('cat_img');
+                                  try {
+                                    const url = await uploadImage('category_images', file);
+                                    setCatImage(url);
+                                  } catch (err: any) {
+                                    alert(`Upload failed: ${err.message || err}`);
+                                  } finally {
+                                    setIsUploading(null);
+                                  }
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
                       </div>
 
                       <div>
@@ -1141,13 +1325,38 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                     <form onSubmit={handleSaveBanner} className="p-5 space-y-4 text-xs">
                       <div>
                         <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Banner Large Image URL</label>
-                        <input
-                          type="url"
-                          required
-                          value={bannerImage}
-                          onChange={(e) => setBannerImage(e.target.value)}
-                          className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800 font-sans"
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="url"
+                            required
+                            value={bannerImage}
+                            onChange={(e) => setBannerImage(e.target.value)}
+                            className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800 font-sans"
+                          />
+                          {/* File image uploader for Banner Image */}
+                          <label className="flex items-center justify-center px-3 bg-emerald-950 hover:bg-emerald-900 border border-emerald-900 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded cursor-pointer whitespace-nowrap">
+                            <span>{isUploading === 'banner_img' ? 'Uploading...' : 'Upload Link'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setIsUploading('banner_img');
+                                  try {
+                                    const url = await uploadImage('banner_images', file);
+                                    setBannerImage(url);
+                                  } catch (err: any) {
+                                    alert(`Upload failed: ${err.message || err}`);
+                                  } finally {
+                                    setIsUploading(null);
+                                  }
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
                       </div>
 
                       <div>
@@ -1330,74 +1539,152 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
             </div>
           )}
 
-          {/* TAB 6: SEO MANAGER */}
+          {/* TAB 6: WEBSITE SETTINGS & SEO */}
           {activeTab === 'seo' && (
             <div className="bg-[#fff] border border-cream-100 rounded-xl p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
               <div>
-                <h2 className="text-md font-serif font-bold text-emerald-950 uppercase tracking-wider">Search Engine Optimization (SEO) controls</h2>
-                <p className="text-xs text-neutral-400">Configure search index summaries, crawler metadata, Open Graph (OG) shares, and Sitemap files</p>
+                <h2 className="text-md font-serif font-bold text-emerald-950 uppercase tracking-wider">Website General Configurations & SEO</h2>
+                <p className="text-xs text-neutral-400">Configure global shop identity coordinates, social media links, search engine optimization targets, and assets.</p>
               </div>
 
-              <form onSubmit={handleSaveSEOConfig} className="space-y-4 text-xs">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Global Meta Title</label>
-                    <input
-                      type="text"
-                      value={seo.metaTitle}
-                      onChange={(e) => setSeo({ ...seo, metaTitle: e.target.value })}
-                      className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800"
-                    />
-                  </div>
+              <form onSubmit={handleSaveSEOConfig} className="space-y-6 text-xs">
+                {/* Section A: General Settings */}
+                <div className="border-b border-cream-100 pb-5 space-y-4">
+                  <h3 className="text-xs font-bold text-emerald-900 uppercase tracking-widest">General Corporate Identity</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Store / Business Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={storeName}
+                        onChange={(e) => setStoreName(e.target.value)}
+                        className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800 font-semibold"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Open Graph Title (Facebook share)</label>
-                    <input
-                      type="text"
-                      value={seo.ogTitle}
-                      onChange={(e) => setSeo({ ...seo, ogTitle: e.target.value })}
-                      className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">WhatsApp Order Helpline *</label>
+                      <input
+                        type="text"
+                        required
+                        value={whatsappNumber}
+                        onChange={(e) => setWhatsappNumber(e.target.value)}
+                        className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800 font-mono"
+                      />
+                      <span className="text-[10px] text-neutral-400 mt-1 block">Specify prefix (e.g., +923020038010)</span>
+                    </div>
 
-                  <div className="col-span-1 md:col-span-2">
-                    <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">SEO Description Snippet *</label>
-                    <textarea
-                      rows={3}
-                      value={seo.metaDescription}
-                      onChange={(e) => setSeo({ ...seo, metaDescription: e.target.value })}
-                      className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800"
-                    />
-                  </div>
-
-                  <div className="col-span-1 md:col-span-2">
-                    <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Open Graph / Social Share Card Cover Image URL</label>
-                    <input
-                      type="url"
-                      value={seo.ogImage}
-                      onChange={(e) => setSeo({ ...seo, ogImage: e.target.value })}
-                      className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800 font-sans"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Root XML Sitemap Path</label>
-                    <input
-                      type="text"
-                      value={seo.sitemap}
-                      onChange={(e) => setSeo({ ...seo, sitemap: e.target.value })}
-                      className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800 font-mono"
-                    />
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Facebook Brand Link</label>
+                      <input
+                        type="url"
+                        value={facebookLink}
+                        onChange={(e) => setFacebookLink(e.target.value)}
+                        className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800 font-sans"
+                        placeholder="https://facebook.com/..."
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-2">
+                {/* Section B: Search Optimization */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-widest">Search Engine Optimization (SEO) & Shares</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Global Meta Title Option</label>
+                      <input
+                        type="text"
+                        value={seo.metaTitle}
+                        onChange={(e) => setSeo({ ...seo, metaTitle: e.target.value })}
+                        className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800"
+                        placeholder="Outfits by Mushq - Luxury Lawn, Chiffon & Silk Collections"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Open Graph Title (Facebook share)</label>
+                      <input
+                        type="text"
+                        value={seo.ogTitle}
+                        onChange={(e) => setSeo({ ...seo, ogTitle: e.target.value })}
+                        className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800"
+                        placeholder="Explore the Mushq Luxury Lawn Collection Online"
+                      />
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">SEO Description Snippet *</label>
+                      <textarea
+                        rows={3}
+                        value={seo.metaDescription}
+                        onChange={(e) => setSeo({ ...seo, metaDescription: e.target.value })}
+                        className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800"
+                        placeholder="Discover premium designs and luxury lawn crafted beyond perfection at Mushq Outfits Karachi. Fast nationwide delivery options."
+                      />
+                    </div>
+
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Open Graph / Social Share Card Cover Image URL</label>
+                      <input
+                        type="url"
+                        value={seo.ogImage}
+                        onChange={(e) => setSeo({ ...seo, ogImage: e.target.value })}
+                        className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800 font-sans"
+                        placeholder="https://images.unsplash.com/... or upload below"
+                      />
+
+                      {/* File image uploader for SEO Card */}
+                      <div className="mt-2 p-3 bg-cream-50/50 border border-dashed border-cream-200 rounded flex flex-col md:flex-row items-center justify-between gap-3">
+                        <div>
+                          <span className="text-[10px] font-bold text-neutral-700 uppercase block">Upload Social Card Cover to Supabase Storage</span>
+                          <span className="text-[9px] text-neutral-400">Replaces current social share image preview live</span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setIsUploading('seo');
+                              try {
+                                const url = await uploadImage('website_assets', file);
+                                setSeo((prev) => ({ ...prev, ogImage: url }));
+                                alert('SEO card image successfully uploaded to Supabase Storage!');
+                              } catch (err: any) {
+                                alert(`Upload failed: ${err.message || err}`);
+                              } finally {
+                                setIsUploading(null);
+                              }
+                            }
+                          }}
+                          className="text-[10px] text-neutral-600 font-semibold max-w-xs"
+                        />
+                        {isUploading === 'seo' && <span className="text-[10px] text-[#ab8215] font-bold animate-pulse">Uploading asset...</span>}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-700 uppercase tracking-widest mb-1">Root XML Sitemap Path</label>
+                      <input
+                        type="text"
+                        value={seo.sitemap}
+                        onChange={(e) => setSeo({ ...seo, sitemap: e.target.value })}
+                        className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800 font-mono"
+                        placeholder="/sitemap.xml"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2 border-t border-cream-100">
                   <button
                     type="submit"
                     id="btn-save-seo"
-                    className="px-5 py-2.5 bg-[#ab8215] hover:bg-[#937318] text-[#fff] font-bold rounded-lg text-xs tracking-wider uppercase transition-colors pointer-events-auto cursor-pointer"
+                    className="px-6 py-3 bg-[#ab8215] hover:bg-[#937318] text-[#fff] font-bold rounded-lg text-xs tracking-wider uppercase transition-colors pointer-events-auto cursor-pointer"
                   >
-                    Commit SEO tags to Head element
+                    Commit Settings & SEO Tags to Supabase
                   </button>
                 </div>
               </form>

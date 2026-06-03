@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Product, Category, Banner, Inquiry, Review, CartItem } from './types';
 import { 
   getProducts, getCategories, getBanners, getSEO, getReviews,
-  addInquiry, incrementVisitors 
+  addInquiry, incrementVisitors, getWebsiteSettings
 } from './storage';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -55,17 +55,38 @@ export default function App() {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
 
+  // Dynamic Company Coordinate Settings
+  const [storeName, setStoreName] = useState('Mushq Outfits');
+  const [whatsappNumber, setWhatsappNumber] = useState('+92 302 0038010');
+  const [facebookLink, setFacebookLink] = useState('https://facebook.com/mushqpk');
+
   // Setup databases & tracking
-  const refreshDatabase = () => {
-    setProducts(getProducts());
-    setCategories(getCategories());
-    setBanners(getBanners().filter(b => b.isActive));
-    setReviews(getReviews());
+  const refreshDatabase = async () => {
+    try {
+      const prods = await getProducts();
+      setProducts(prods);
+      const cats = await getCategories();
+      setCategories(cats);
+      const bans = await getBanners();
+      setBanners(bans.filter(b => b.isActive));
+      const revs = await getReviews();
+      setReviews(revs);
+      
+      const setts = await getWebsiteSettings();
+      setStoreName(setts.storeName);
+      setWhatsappNumber(setts.whatsappNumber);
+      setFacebookLink(setts.facebookLink);
+    } catch (e) {
+      console.error('Failed refreshing database:', e);
+    }
   };
 
   useEffect(() => {
-    incrementVisitors(); // Increment operational visits logged
-    refreshDatabase();
+    const init = async () => {
+      await incrementVisitors(); // Increment operational visits logged
+      await refreshDatabase();
+    };
+    init();
 
     // Load wishlist
     const savedWish = localStorage.getItem('mushq_wishlist');
@@ -192,9 +213,9 @@ export default function App() {
   };
 
   // Add inquiry checkout triggered via WhatsApp form
-  const handleNewInquiryLog = (inq: Omit<Inquiry, 'id' | 'date'>) => {
-    addInquiry(inq);
-    refreshDatabase(); // Refresh local back-office variables
+  const handleNewInquiryLog = async (inq: Omit<Inquiry, 'id' | 'date'>) => {
+    await addInquiry(inq);
+    await refreshDatabase(); // Refresh local back-office variables
   };
 
   // Calculate filtered shop products
@@ -249,6 +270,8 @@ export default function App() {
         onOpenCart={() => setCartOpen(true)}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
+        storeName={storeName}
+        whatsappNumber={whatsappNumber}
       />
 
       <main className="flex-1">
@@ -522,10 +545,10 @@ export default function App() {
                 <Sparkles className="w-8 h-8 text-gold-400 animate-bounce mb-4 block" />
                 <h3 className="text-2xl md:text-4xl font-serif font-bold tracking-wide">Prefer Custom Modifications?</h3>
                 <p className="text-xs md:text-sm text-neutral-300 max-w-xl mt-3 leading-relaxed">
-                  Connect directly with Mushq’s elite in-house boutique tailors. Request custom arm lengths, neckline modifications, custom shades, or seek advice on your size chart parameters live via WhatsApp!
+                  Connect directly with {storeName}’s elite in-house boutique tailors. Request custom arm lengths, neckline modifications, custom shades, or seek advice on your size chart parameters live via WhatsApp!
                 </p>
                 <a
-                  href="https://wa.me/923020038010"
+                  href={`https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-8 bg-[#fff] hover:bg-gold-500 hover:text-emerald-950 font-bold text-emerald-950 py-3.5 px-8 rounded-lg text-xs tracking-widest uppercase transition-all select-none cursor-pointer inline-flex items-center gap-2"
@@ -1095,7 +1118,7 @@ export default function App() {
                       // Build grand message
                       const totalCartValue = cart.reduce((total, item) => total + ((item.product.salePrice || item.product.price) * item.quantity), 0);
                       
-                      let message = `Assalamualaikum Mushq Outfits Karachi,\n\nI would like to place an order from my shopping cart.\n\n*Customer Details:*\n- Name: ${cartName}`;
+                      let message = `Assalamualaikum ${storeName} Karachi,\n\nI would like to place an order from my shopping cart.\n\n*Customer Details:*\n- Name: ${cartName}`;
                       if (cartPhone) {
                         message += `\n- WhatsApp Contact: ${cartPhone}`;
                       }
@@ -1122,10 +1145,10 @@ export default function App() {
 
                       // Encode message
                       const encodedText = encodeURIComponent(message);
-                      const whatsappUrl = `https://wa.me/923020038010?text=${encodedText}`;
+                      const whatsappUrl = `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodedText}`;
 
                       // Register each item in backend db inquiries
-                      cart.forEach(item => {
+                      Promise.all(cart.map(item => 
                         addInquiry({
                           customerName: cartName,
                           customerPhone: cartPhone || 'WhatsApp Client',
@@ -1133,7 +1156,9 @@ export default function App() {
                           price: `Rs. ${(item.product.salePrice || item.product.price).toLocaleString()} x ${item.quantity}`,
                           sku: item.product.sku,
                           productLink: `https://outfitsbymushq.netlify.app/product/${item.product.id}`
-                        });
+                        })
+                      )).finally(() => {
+                        refreshDatabase();
                       });
 
                       // Reset cart
@@ -1199,7 +1224,13 @@ export default function App() {
       )}
 
       {/* Custom operational bottom assurance band */}
-      <Footer onSelectCategory={setActiveCategory} onChangeView={setCurrentView} />
+      <Footer 
+        onSelectCategory={setActiveCategory} 
+        onChangeView={setCurrentView} 
+        storeName={storeName}
+        whatsappNumber={whatsappNumber}
+        facebookLink={facebookLink}
+      />
     </div>
   );
 }
