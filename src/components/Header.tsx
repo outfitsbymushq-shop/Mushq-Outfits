@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Menu, X, Search, Heart, ShoppingBag, Landmark, Settings, Sparkles, MessageSquare, Globe } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Category } from '../types';
 import { getCustomWebsiteConfigs } from '../storage';
 import { useCurrency } from '../currencyContext';
@@ -44,7 +45,7 @@ export default function Header({
   const [searchOpen, setSearchOpen] = useState(false);
   const [currencyMenuOpen, setCurrencyMenuOpen] = useState(false);
 
-  const currentCurrency = currencyConfig.currencies.find(c => c.code === selectedCurrencyCode) || { flag: '🇵🇰', code: 'PKR', symbol: 'Rs.' };
+  const currentCurrency = currencyConfig.currencies.find(c => c.code === selectedCurrencyCode) || { flag: '🇵🇰', code: 'PKR', symbol: 'Rs.', country: 'Pakistan', countryCode: 'PK' };
 
   const handleNavClick = (slug: string) => {
     onSelectCategory(slug);
@@ -71,7 +72,7 @@ export default function Header({
       )}
 
       {/* Main navigation area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 md:h-24 grid grid-cols-3 items-center relative w-full overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 md:h-24 grid grid-cols-3 items-center relative w-full">
         
         {/* Column 1: Left (Hamburger & Search) */}
         <div className="flex items-center justify-start gap-1 sm:gap-3 z-15 shrink-0">
@@ -115,39 +116,84 @@ export default function Header({
           <div className="relative inline-block text-left" id="currency-switcher-container">
             <button
               onClick={() => setCurrencyMenuOpen(!currencyMenuOpen)}
-              className="flex items-center gap-1 px-1.5 py-1 text-[10px] md:text-xs font-bold text-emerald-950 uppercase tracking-wider rounded border border-cream-250/70 hover:bg-cream-100/40 hover:border-gold-300 bg-white/50 transition-all cursor-pointer select-none"
+              className="flex items-center gap-2 px-3 py-1.5 text-[10px] md:text-xs font-bold text-emerald-950 uppercase tracking-widest rounded-full border border-cream-250 hover:bg-cream-100 hover:border-gold-450 bg-white/60 shadow-3xs transition-all duration-300 cursor-pointer select-none active:scale-95"
               type="button"
               id="btn-currency-select"
             >
-              <span className="text-sm select-none shrink-0 leading-none">{currentCurrency.flag}</span>
-              <span className="font-mono text-[9px] md:text-xs text-neutral-805 select-none">{currentCurrency.code}</span>
-              <span className="text-[7.5px] select-none text-neutral-400">▼</span>
-            </button>
-            {currencyMenuOpen && (
-              <>
-                <div 
-                  className="fixed inset-0 z-40 bg-transparent" 
-                  onClick={() => setCurrencyMenuOpen(false)} 
+              <span className="flex items-center shrink-0 w-4.5 h-3 overflow-hidden rounded-xs border border-neutral-200/50">
+                <img 
+                  src={`https://flagcdn.com/w40/${(currentCurrency.countryCode || currentCurrency.code.substring(0, 2)).toLowerCase()}.png`} 
+                  alt={currentCurrency.code} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
-                <div className="absolute right-0 mt-1 pb-1 w-36 max-h-56 overflow-y-auto bg-white border border-cream-205 rounded shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-150 py-1.5 custom-scrollbar">
-                  {currencyConfig.currencies.filter(c => c.isEnabled).map((c) => (
-                    <button
-                      key={c.code}
-                      onClick={() => {
-                        setCurrencyCode(c.code);
-                        setCurrencyMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs font-semibold font-sans hover:bg-cream-50/70 transition-colors uppercase cursor-pointer text-neutral-700"
-                      type="button"
-                    >
-                      <span className="text-xs shrink-0 select-none">{c.flag}</span>
-                      <span className="font-mono shrink-0 text-[10px] tracking-tight">{c.code}</span>
-                      <span className="text-[8px] text-neutral-400 font-normal select-none uppercase tracking-widest truncate block">{c.symbol}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+              </span>
+              <span className="font-mono text-[9px] md:text-[11px] text-neutral-800 tracking-tight select-none">
+                {currentCurrency.code} <span className="text-neutral-400 font-normal text-[8px] md:text-[9px] ml-0.5">{currentCurrency.symbol}</span>
+              </span>
+              <span className="text-[7px] text-gold-600 transition-transform duration-300 transform leading-none">▼</span>
+            </button>
+            <AnimatePresence>
+              {currencyMenuOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40 bg-transparent" 
+                    onClick={() => setCurrencyMenuOpen(false)} 
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    className="absolute right-0 mt-2 w-52 max-h-[380px] sm:max-h-[460px] overflow-y-auto bg-white border border-[#eae2d5] rounded-xl shadow-xl z-50 py-1.5 custom-scrollbar animate-none"
+                  >
+                    <div className="px-3 py-1 mb-1 border-b border-cream-100 pb-1.5">
+                      <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest block">Select Currency</span>
+                    </div>
+                    {currencyConfig.currencies.filter(c => c.isEnabled).map((c) => {
+                      const isSelected = c.code === selectedCurrencyCode;
+                      const countryCode = (c.countryCode || c.code.substring(0, 2)).toLowerCase();
+                      return (
+                        <button
+                          key={c.code}
+                          onClick={() => {
+                            setCurrencyCode(c.code);
+                            setCurrencyMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs font-semibold font-sans hover:bg-cream-50 transition-colors cursor-pointer rounded-xs ${
+                            isSelected ? 'bg-cream-50/70 border-l-2 border-gold-500 text-emerald-950 font-bold pl-2.5' : 'text-neutral-700'
+                          }`}
+                          type="button"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex items-center shrink-0 w-[18px] h-[12px] overflow-hidden rounded-xs border border-neutral-200/50">
+                              <img 
+                                src={`https://flagcdn.com/w40/${countryCode}.png`} 
+                                alt={c.country} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            </span>
+                            <div className="flex flex-col leading-none">
+                              <span className="font-mono text-[10.5px] font-bold text-neutral-850 tracking-wide uppercase">{c.code}</span>
+                              <span className="text-[8px] text-neutral-400 font-normal tracking-wide truncate max-w-[100px] block mt-0.5">{c.country}</span>
+                            </div>
+                          </div>
+                          
+                          <span className="font-mono text-[9px] text-neutral-500 font-bold bg-neutral-100/85 border border-neutral-200/40 px-1.5 py-0.5 rounded uppercase">
+                            {c.symbol}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
 
           <button

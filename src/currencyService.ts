@@ -2,6 +2,7 @@ export interface CurrencyInfo {
   code: string;
   symbol: string;
   flag: string;
+  countryCode?: string; // 2-letter ISO country code, e.g. "PK", "GB"
   country: string;
   rate: number; // 1 PKR to target currency rate
   isEnabled: boolean;
@@ -15,21 +16,26 @@ export interface CurrencyConfig {
 }
 
 export const INITIAL_CURRENCIES: CurrencyInfo[] = [
-  { code: 'PKR', symbol: 'Rs.', flag: '🇵🇰', country: 'Pakistan', rate: 1.0, isEnabled: true },
-  { code: 'GBP', symbol: '£', flag: '🇬🇧', country: 'United Kingdom', rate: 0.0028, isEnabled: true },
-  { code: 'USD', symbol: '$', flag: '🇺🇸', country: 'United States', rate: 0.0036, isEnabled: true },
-  { code: 'CAD', symbol: '$', flag: '🇨🇦', country: 'Canada', rate: 0.0049, isEnabled: true },
-  { code: 'AED', symbol: 'د.إ', flag: '🇦🇪', country: 'United Arab Emirates', rate: 0.013, isEnabled: true },
-  { code: 'SAR', symbol: '﷼', flag: '🇸🇦', country: 'Saudi Arabia', rate: 0.0134, isEnabled: true },
-  { code: 'QAR', symbol: '﷼', flag: '🇶🇦', country: 'Qatar', rate: 0.013, isEnabled: true },
-  { code: 'KWD', symbol: 'د.ك', flag: '🇰🇼', country: 'Kuwait', rate: 0.0011, isEnabled: true },
-  { code: 'OMR', symbol: 'ر.ع.', flag: '🇴🇲', country: 'Oman', rate: 0.0014, isEnabled: true },
-  { code: 'EUR', symbol: '€', flag: '🇩🇪', country: 'Germany', rate: 0.0033, isEnabled: true },
-  { code: 'INR', symbol: '₹', flag: '🇮🇳', country: 'India', rate: 0.30, isEnabled: true }
+  { code: 'PKR', symbol: 'Rs.', flag: '🇵🇰', countryCode: 'PK', country: 'Pakistan', rate: 1.0, isEnabled: true },
+  { code: 'GBP', symbol: '£', flag: '🇬🇧', countryCode: 'GB', country: 'United Kingdom', rate: 0.0028, isEnabled: true },
+  { code: 'USD', symbol: '$', flag: '🇺🇸', countryCode: 'US', country: 'United States', rate: 0.0036, isEnabled: true },
+  { code: 'CAD', symbol: '$', flag: '🇨🇦', countryCode: 'CA', country: 'Canada', rate: 0.0049, isEnabled: true },
+  { code: 'AED', symbol: 'د.إ', flag: '🇦🇪', countryCode: 'AE', country: 'United Arab Emirates', rate: 0.013, isEnabled: true },
+  { code: 'SAR', symbol: '﷼', flag: '🇸🇦', countryCode: 'SA', country: 'Saudi Arabia', rate: 0.0134, isEnabled: true },
+  { code: 'QAR', symbol: '﷼', flag: '🇶🇦', countryCode: 'QA', country: 'Qatar', rate: 0.013, isEnabled: true },
+  { code: 'KWD', symbol: 'د.ك', flag: '🇰🇼', countryCode: 'KW', country: 'Kuwait', rate: 0.0011, isEnabled: true },
+  { code: 'OMR', symbol: 'ر.ع.', flag: '🇴🇲', countryCode: 'OM', country: 'Oman', rate: 0.0014, isEnabled: true },
+  { code: 'EUR', symbol: '€', flag: '🇩🇪', countryCode: 'DE', country: 'Germany', rate: 0.0033, isEnabled: true },
+  { code: 'INR', symbol: '₹', flag: '🇮🇳', countryCode: 'IN', country: 'India', rate: 0.30, isEnabled: true }
 ];
 
 const CONFIG_KEY = 'mushq_currencies_config_v1';
 const SELECTED_CURRENCY_KEY = 'mushq_selected_currency_code';
+
+const DEFAULT_COUNTRY_CODES: Record<string, string> = {
+  PKR: 'PK', GBP: 'GB', USD: 'US', CAD: 'CA', AED: 'AE',
+  SAR: 'SA', QAR: 'QA', KWD: 'KW', OMR: 'OM', EUR: 'DE', INR: 'IN'
+};
 
 export const getCurrencyConfig = (): CurrencyConfig => {
   try {
@@ -38,6 +44,10 @@ export const getCurrencyConfig = (): CurrencyConfig => {
       const parsed = JSON.parse(saved);
       // Ensure basic structure is intact
       if (parsed && Array.isArray(parsed.currencies)) {
+        parsed.currencies = parsed.currencies.map((c: any) => ({
+          ...c,
+          countryCode: c.countryCode || DEFAULT_COUNTRY_CODES[c.code] || c.code.substring(0, 2)
+        }));
         return parsed as CurrencyConfig;
       }
     }
