@@ -269,8 +269,8 @@ export const DEFAULT_REVIEWS: Review[] = [
 ];
 
 export const DEFAULT_SEO_METADATA: SEOMetadata = {
-  metaTitle: 'Mushq Outfits | Luxury Pakistani Women Fashion Brand',
-  metaDescription: 'Shop exquisite luxury unstitched lawn, velvet peshwas, organza tunics, premium party wear and stitched formal wear at Mushq Outfits Karachi. Fast nationwide cash on delivery.',
+  metaTitle: 'Outfits by Mushq | Luxury Pakistani Women Fashion Brand',
+  metaDescription: 'Shop exquisite luxury unstitched lawn, velvet peshwas, organza tunics, premium party wear and stitched formal wear at Outfits by Mushq. Secure custom stitching and worldwide premium courier deliveries.',
   ogTitle: 'Mushq Outfits - Timeless Premium Pakistani Boutique',
   ogDescription: 'Experience pure chiffon, cotton jacquard, micro-velvets crafted in intricate Pakistani embroidery motifs. Orders directly on WhatsApp!',
   ogImage: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1200&q=80',

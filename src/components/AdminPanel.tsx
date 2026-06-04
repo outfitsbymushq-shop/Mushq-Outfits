@@ -4,16 +4,17 @@ import {
   Users, Search, ShieldCheck, Sparkles, Plus, Trash2, Edit3, 
   Check, Save, ArrowRight, Eye, RefreshCw, LogOut, Terminal, 
   FileText, ArrowUpRight, HelpCircle, Video, Palette, Info, 
-  CheckCircle2, AlertTriangle, AlertCircle, PlayCircle, Loader2, Play
+  CheckCircle2, AlertTriangle, AlertCircle, PlayCircle, Loader2, Play, Star, Globe
 } from 'lucide-react';
-import { Product, Category, Banner, Inquiry, SEOMetadata } from '../types';
+import { Product, Category, Banner, Inquiry, SEOMetadata, Review } from '../types';
 import { 
   getProducts, saveProduct, deleteProduct,
   getCategories, saveCategory, deleteCategory,
   getBanners, saveBanner, deleteBanner,
   getInquiries, addInquiry, deleteInquiry, updateInquiryStatus,
   getSEO, saveSEO, getReviews, getVisitors,
-  getWebsiteSettings, saveWebsiteSettings, uploadImage
+  getWebsiteSettings, saveWebsiteSettings, uploadImage,
+  updateReviewStatus, deleteReview
 } from '../storage';
 import { supabase } from '../supabaseClient';
 
@@ -49,13 +50,14 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
   const [authError, setAuthError] = useState('');
 
   // Active Tab - Completely hide 'supabase' SQL tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'categories' | 'banners' | 'inquiries' | 'seo'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'categories' | 'banners' | 'inquiries' | 'reviews' | 'seo'>('overview');
 
   // Database lists
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [seo, setSeo] = useState<SEOMetadata>({
     metaTitle: '', metaDescription: '', ogTitle: '', ogDescription: '', ogImage: '', sitemap: ''
   });
@@ -167,6 +169,7 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
 
       const revs = await getReviews();
       setReviewsCount(revs.length);
+      setReviews(revs);
       const v = await getVisitors();
       setVisitorsCount(v);
     } catch (e) {
@@ -649,6 +652,44 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
     }
   };
 
+  // REVIEWS ACTIONS
+  const handleToggleReviewStatus = async (id: string, currentStatus: boolean) => {
+    setIsActionLoading(true);
+    try {
+      await updateReviewStatus(id, !currentStatus);
+      await loadDatabase();
+      showToast(
+        !currentStatus 
+          ? 'Patron review successfully approved and published live!' 
+          : 'Patron review successfully hidden from public storefront.', 
+        'success'
+      );
+    } catch (err: any) {
+      showToast(`Review status alteration failed: ${err.message || err}`, 'error');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleDeleteReviewLog = async (id: string) => {
+    triggerConfirm(
+      'Purge Patron Review',
+      'Are you absolutely sure you want to permanently delete this review? This action is completely irreversible.',
+      async () => {
+        setIsActionLoading(true);
+        try {
+          await deleteReview(id);
+          await loadDatabase();
+          showToast('Patron review successfully purged from the database.', 'success');
+        } catch (err: any) {
+          showToast(`Deletion of review failed: ${err.message || err}`, 'error');
+        } finally {
+          setIsActionLoading(false);
+        }
+      }
+    );
+  };
+
   // LOGIN SCREEN
   if (!isAuthenticated) {
     return (
@@ -877,9 +918,26 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
           </button>
 
           <button
+            onClick={() => setActiveTab('reviews')}
+            className={`w-full flex items-center justify-between px-4 py-3 text-xs font-semibold tracking-wider uppercase rounded-lg cursor-pointer transition-all ${
+              activeTab === 'reviews' ? 'bg-emerald-900 text-cream-50 shadow-md' : 'text-neutral-700 hover:bg-cream-50'
+            }`}
+          >
+            <div className="flex items-center gap-3.5">
+              <Star className="w-4.5 h-4.5" />
+              <span>Patron Reviews</span>
+            </div>
+            {reviews.length > 0 && (
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'reviews' ? 'bg-gold-500 text-emerald-950' : 'bg-gold-200 text-gold-900'}`}>
+                {reviews.length}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab('seo')}
             className={`w-full flex items-center gap-3.5 px-4 py-3 text-xs font-semibold tracking-wider uppercase rounded-lg cursor-pointer transition-all ${
-              activeTab === 'seo' ? 'bg-emerald-900 text-cream-50 shadow-md' : 'text-neutral-700 hover:bg-cream-50'
+              activeTab === 'seo' ? 'bg-emerald-900 text-cream-50 shadow-md' : 'text-neutral-750 hover:bg-cream-55'
             }`}
           >
             <Sparkles className="w-4.5 h-4.5" />
@@ -1951,6 +2009,123 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                                 >
                                   Delete
                                 </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5.5: CUSTOMER PATRON REVIEWS MODERATION */}
+          {activeTab === 'reviews' && (
+            <div className="bg-[#fff] border border-cream-100 rounded-xl p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-cream-100 pb-4">
+                <div>
+                  <h2 className="text-md font-serif font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-2">
+                    <Star className="w-5 h-5 text-gold-500 fill-current" />
+                    <span>Patron Review Books Moderation</span>
+                  </h2>
+                  <p className="text-xs text-neutral-450">
+                    Approve, hide, or permanently purge customer feedback. Approved reviews are displayed instantly on product details and landing spaces.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-3 py-1 bg-emerald-50 text-emerald-850 border border-emerald-100 rounded-full">
+                    {reviews.filter(r => r.verified).length} Approved
+                  </span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-3 py-1 bg-amber-50 text-amber-850 border border-amber-100 rounded-full animate-pulse">
+                    {reviews.filter(r => !r.verified).length} Pending Curation
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-cream-50/45 p-4 rounded-xl border border-cream-100 space-y-2">
+                <p className="text-xs font-semibold text-emerald-950">💡 Guidelines for Brand Review Curation</p>
+                <p className="text-[11px] text-neutral-500 leading-relaxed font-sans font-medium">
+                  Ensure the text maintains premium couture brand styling, has no unprofessional wording, and verified purchase flags are checked if indeed shipped. Click <strong className="text-emerald-900">Approve</strong> to publish live immediately. Click <strong className="text-amber-900">Hide</strong> to temporarily withdraw public access.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {reviews.length === 0 ? (
+                  <div className="text-center py-16 bg-cream-50/10 border border-dashed border-cream-150 rounded-xl space-y-2">
+                    <Star className="w-10 h-10 mx-auto text-neutral-300 stroke-1" />
+                    <p className="text-xs text-neutral-400 font-semibold uppercase tracking-wider">Patron reviews table is empty</p>
+                    <p className="text-[11px] text-neutral-400">No patron feedback has been logged yet.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-cream-105 bg-[#fff]">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-cream-100/60 text-emerald-950 uppercase text-[10px] tracking-widest border-b border-cream-150">
+                          <th className="p-4 font-bold">Patron / Date</th>
+                          <th className="p-4 font-bold">City / Location</th>
+                          <th className="p-4 font-bold col-span-2">Feedback Description</th>
+                          <th className="p-4 font-bold text-center">Stars</th>
+                          <th className="p-4 font-bold text-center">Live Status</th>
+                          <th className="p-4 font-bold text-right">Moderation Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-cream-100 bg-[#fff]">
+                        {reviews.map((rev) => {
+                          return (
+                            <tr key={rev.id} className="hover:bg-cream-50/40 transition-all font-sans">
+                              <td className="p-4">
+                                <div className="font-bold text-emerald-950">{rev.name}</div>
+                                <div className="text-[10px] text-neutral-400 mt-0.5">{rev.date}</div>
+                              </td>
+                              <td className="p-4 font-semibold text-neutral-650">
+                                <div className="flex items-center gap-1">
+                                  <Globe className="w-3.5 h-3.5 text-neutral-400" />
+                                  <span>{rev.location}</span>
+                                </div>
+                              </td>
+                              <td className="p-4 max-w-sm">
+                                <p className="text-neutral-750 italic break-words">"{rev.comment}"</p>
+                              </td>
+                              <td className="p-4 text-center shrink-0">
+                                <div className="flex items-center justify-center gap-0.5">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star 
+                                      key={s} 
+                                      className={`w-3.5 h-3.5 ${s <= rev.rating ? 'text-gold-500 fill-current' : 'text-neutral-200'}`} 
+                                    />
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="p-4 text-center shrink-0">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
+                                  rev.verified 
+                                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' 
+                                    : 'bg-amber-50 text-amber-805 border border-amber-100'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${rev.verified ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+                                  <span>{rev.verified ? 'Live / Approved' : 'Hidden / Pending'}</span>
+                                </span>
+                              </td>
+                              <td className="p-4 text-right shrink-0">
+                                <div className="flex items-center justify-end gap-3.5 font-bold">
+                                  <button
+                                    onClick={() => handleToggleReviewStatus(rev.id, rev.verified)}
+                                    className={`font-semibold text-[10px] uppercase tracking-wider cursor-pointer hover:underline ${
+                                      rev.verified ? 'text-amber-700 hover:text-amber-950' : 'text-emerald-700 hover:text-emerald-950'
+                                    }`}
+                                  >
+                                    {rev.verified ? 'Hide' : 'Approve'}
+                                  </button>
+                                  <span className="text-neutral-200">|</span>
+                                  <button
+                                    onClick={() => handleDeleteReviewLog(rev.id)}
+                                    className="text-rose-700 hover:text-rose-950 font-semibold text-[10px] uppercase tracking-wider cursor-pointer hover:underline"
+                                  >
+                                    Purge
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );

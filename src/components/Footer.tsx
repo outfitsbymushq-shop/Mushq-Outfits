@@ -12,7 +12,7 @@ interface FooterProps {
 export default function Footer({ 
   onSelectCategory, 
   onChangeView,
-  storeName = 'Mushq Outfits',
+  storeName = 'Outfits by Mushq',
   whatsappNumber = '+92 302 0038010',
   facebookLink = 'https://facebook.com/mushqpk'
 }: FooterProps) {
@@ -33,7 +33,7 @@ export default function Footer({
           </div>
           <div>
             <h4 className="text-xs font-bold uppercase tracking-widest text-[#064e3b]">Fast National Shipping</h4>
-            <p className="text-xs text-neutral-600 mt-1">Prompt Cash-On-Delivery across Pakistan. Express orders within Karachi in 24-48 hrs.</p>
+            <p className="text-xs text-neutral-600 mt-1">Premium courier tracking across Pakistan. Express boutique orders delivered in 24-48 hrs.</p>
           </div>
         </div>
 

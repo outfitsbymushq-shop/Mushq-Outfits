@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Product, Category, Banner, Inquiry, Review, CartItem } from './types';
 import { 
   getProducts, getCategories, getBanners, getSEO, getReviews,
-  addInquiry, incrementVisitors, getWebsiteSettings
+  addInquiry, incrementVisitors, getWebsiteSettings, addReview
 } from './storage';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -511,7 +511,7 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                  {reviews.map((rev) => (
+                  {reviews.filter(r => r.verified).slice(0, 6).map((rev) => (
                     <div key={rev.id} className="bg-[#fff] border border-cream-100 p-6 rounded-xl shadow-xs flex flex-col justify-between">
                       <div className="space-y-3">
                         {/* Rating stars */}
@@ -528,8 +528,9 @@ export default function App() {
                           <span className="font-bold text-emerald-950 block font-serif">{rev.name}</span>
                           <span className="text-neutral-400 block">{rev.location}</span>
                         </div>
-                        <span className="bg-emerald-50 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                          🛡 Verified Buyer
+                        <span className="bg-emerald-50 text-emerald-800 text-[9px] font-bold px-2.5 py-1 rounded flex items-center gap-1.5 font-mono select-none">
+                          <Check className="w-3 h-3 text-emerald-700 font-extrabold" />
+                          <span>Verified Buyer</span>
                         </span>
                       </div>
                     </div>
@@ -759,6 +760,11 @@ export default function App() {
             }}
             onAddInquiry={handleNewInquiryLog}
             onAddToCart={handleAddToCart}
+            reviews={reviews}
+            onAddReview={async (newReview) => {
+              await addReview(newReview);
+              await refreshDatabase();
+            }}
           />
         )}
 
@@ -841,7 +847,7 @@ export default function App() {
               {wishlist.length > 0 && (
                 <div className="bg-cream-100 p-4 border-t border-cream-200">
                   <p className="text-[11px] text-neutral-500 leading-relaxed mb-4 text-center">
-                    Click "Details" on items in the vault to customized arm lengths or request cash on deliveries on checkout.
+                    Review your curated vault items. Select custom sizing options, custom lengths, and verify your selections directly with our design concierge on WhatsApp.
                   </p>
                   <button
                     onClick={() => {
@@ -1171,8 +1177,9 @@ export default function App() {
                     }}
                     className="space-y-3.5 pt-1.5"
                   >
-                    <span className="block text-[11px] font-bold text-gold-600 tracking-widest uppercase mb-1 flex items-center gap-1 select-none">
-                      <span>✦</span> Handshake Checkout (Cash on Delivery)
+                    <span className="block text-[11px] font-bold text-gold-600 tracking-widest uppercase mb-1 flex items-center gap-1.5 select-none font-serif">
+                      <ShoppingBag className="w-3.5 h-3.5 text-gold-500" />
+                      <span>Direct WhatsApp Checkout Service</span>
                     </span>
 
                     <div>

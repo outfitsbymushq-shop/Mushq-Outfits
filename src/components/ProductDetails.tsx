@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
-import { ChevronLeft, MessageSquare, ShieldCheck, Sparkles, MapPin, Ruler, HelpCircle, Check, ShoppingBag, Video, Palette } from 'lucide-react';
-import { Product, Inquiry } from '../types';
+import { ChevronLeft, MessageSquare, ShieldCheck, Sparkles, MapPin, Ruler, HelpCircle, Check, ShoppingBag, Video, Palette, Star, Globe } from 'lucide-react';
+import { Product, Inquiry, Review } from '../types';
 
 interface ProductDetailsProps {
   product: Product;
   onGoBack: () => void;
   onAddInquiry: (inquiry: Omit<Inquiry, 'id' | 'date'>) => void;
   onAddToCart: (product: Product, quantity: number, size: string, customMeasurements?: any) => void;
+  reviews: Review[];
+  onAddReview: (review: Review) => Promise<void>;
 }
 
 export default function ProductDetails({
   product,
   onGoBack,
   onAddInquiry,
-  onAddToCart
+  onAddToCart,
+  reviews,
+  onAddReview
 }: ProductDetailsProps) {
   const [activeImage, setActiveImage] = useState(product.images[0]);
   const [selectedSize, setSelectedSize] = useState<string>(product.sizeInfo?.[0] || 'Unstitched');
@@ -21,6 +25,14 @@ export default function ProductDetails({
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  
+  // New review form states
+  const [revName, setRevName] = useState('');
+  const [revLocation, setRevLocation] = useState('');
+  const [revRating, setRevRating] = useState(5);
+  const [revComment, setRevComment] = useState('');
+  const [revSubmitted, setRevSubmitted] = useState(false);
+  const [revSubmitting, setRevSubmitting] = useState(false);
   
   // Custom stitching parameters
   const [bustSize, setBustSize] = useState('');
@@ -121,6 +133,35 @@ ${productUrl}`;
     onAddToCart(product, 1, selectedSize, customMeasurements);
   };
 
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!revName.trim() || !revComment.trim()) {
+      alert('Please write your name and a comment before submitting.');
+      return;
+    }
+    setRevSubmitting(true);
+    try {
+      await onAddReview({
+        id: 'rev_' + Math.random().toString(36).substring(2, 11),
+        name: revName,
+        location: revLocation || 'Karachi, Pakistan',
+        rating: revRating,
+        comment: revComment,
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        verified: false // Must be verified by admin before public viewing
+      });
+      setRevSubmitted(true);
+      setRevName('');
+      setRevLocation('');
+      setRevComment('');
+      setRevRating(5);
+    } catch (err) {
+      console.error('Failed submitting review:', err);
+    } finally {
+      setRevSubmitting(false);
+    }
+  };
+
   return (
     <div id="product-detail-page" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       
@@ -187,11 +228,17 @@ ${productUrl}`;
         {/* RIGHT COLUMN: Interactive Details (6 cols on lg) */}
         <div className="lg:col-span-6 flex flex-col gap-6 justify-between">
           <div>
+            {/* Worldwide Delivery Badge */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-650 text-[#fff] text-[9px] uppercase font-extrabold tracking-widest rounded-full mb-4 shadow-sm select-none">
+              <span className="w-1.5 h-1.5 bg-red-100 rounded-full animate-ping"></span>
+              <span>Worldwide Delivery Available</span>
+            </div>
+
             {/* Category / Fabric indicator */}
             <div className="flex items-center gap-2 text-xs text-gold-600 font-bold uppercase tracking-widest">
               <span>{product.category.replace('-', ' ')}</span>
               <span>•</span>
-              <span className="text-emerald-900 border-b border-gold-300 pb-0.5">{product.fabric}</span>
+              <span className="text-emerald-900 border-b border-gold-305 pb-0.5">{product.fabric}</span>
             </div>
 
             {/* Title */}
@@ -271,9 +318,9 @@ ${productUrl}`;
 
               {activeTab === 'delivery' && (
                 <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn">
-                  <p><strong>Nationwide Shipping:</strong> Free Cash on Delivery (COD) services available safely across Pakistan.</p>
-                  <p><strong>Fulfillment Duration:</strong> 2-3 working days for unstitched suits. Premium customized orders require 10-14 working days for immaculate stitching.</p>
-                  <p><strong>Boutique Packaging:</strong> Delivered inside premium Mushq Outfits luxury hard-carton packaging box, containing care tags.</p>
+                  <p><strong>Premium Shipping:</strong> Secured high-speed courier dispatch with full insurance and real-time transit tracking across Pakistan and worldwide.</p>
+                  <p><strong>Fulfillment Duration:</strong> 2-3 working days for unstitched fabrics. Tailoring orders require 10-14 working days for premium hand-finishing stitching.</p>
+                  <p><strong>Boutique Packaging:</strong> Delivered inside premium Outfits by Mushq custom-lined luxury hardbound boxes containing verification tags and styling instructions.</p>
                 </div>
               )}
             </div>
@@ -459,15 +506,241 @@ ${productUrl}`;
 
           {/* Customer Trust indicator */}
           <div className="flex justify-around items-center text-neutral-400 text-[10px] uppercase font-bold tracking-widest mt-4">
-            <span className="flex items-center gap-1">🛡️ SECURED COD VIA CORRESPONDENT</span>
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-800" />
+              <span>100% SECURE DIRECT INQUIRY</span>
+            </span>
             <span>•</span>
-            <span className="flex items-center gap-1">🌸 100% GENUINE SILKS & LAWNS</span>
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-gold-500" />
+              <span>AUTHENTIC LAWNS & EMBROIDERIES</span>
+            </span>
           </div>
         </div>
 
       </div>
 
-      {/* -------------------- BOUTIQUE VIDEO PATH LIGHTBOX -------------------- */}
+      {/* -------------------- EMBEDDED DIRECT VIDEO PLAYER WALKTHROUGH -------------------- */}
+      {product.videoUrl && (
+        <section className="mt-12 bg-emerald-950 text-[#fff] rounded-2xl overflow-hidden shadow-xl border border-gold-350/20 p-6 md:p-10 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="max-w-3xl mx-auto text-center mb-8">
+            <span className="text-[10px] tracking-[0.3em] uppercase text-gold-300 font-extrabold flex items-center justify-center gap-1.5 mb-2">
+              <Video className="w-4 h-4 text-gold-400" />
+              <span>Showcase Runway Experience</span>
+            </span>
+            <h3 className="text-xl md:text-3xl font-serif font-bold tracking-wide text-cream-50">Boutique Video Walkthrough</h3>
+            <p className="text-xs text-neutral-300 font-sans mt-2 max-w-xl mx-auto">
+              Observe true fabric weights, draping dynamics, and precise embroidery reflections in high-fidelity motion.
+            </p>
+          </div>
+
+          <div className="relative aspect-video max-w-4xl mx-auto rounded-xl overflow-hidden border border-neutral-800 bg-[#000] shadow-2xl">
+            {(() => {
+              let id = '';
+              const url = product.videoUrl;
+              if (url.includes('youtu.be/')) {
+                id = url.split('youtu.be/')[1]?.split('?')[0] || '';
+              } else if (url.includes('youtube.com/watch')) {
+                id = url.split('v=')[1]?.split('&')[0] || '';
+              } else if (url.includes('youtube.com/embed/')) {
+                id = url.split('embed/')[1]?.split('?')[0] || '';
+              }
+              const embedUrl = id ? `https://www.youtube.com/embed/${id}` : null;
+              
+              return embedUrl ? (
+                <iframe
+                  src={`${embedUrl}?rel=0`}
+                  title="Embedded Runway Presentation Walkthrough"
+                  frameBorder="0"
+                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full"
+                ></iframe>
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
+                  <Video className="w-10 h-10 text-neutral-600 animate-pulse" />
+                  <p className="text-xs font-semibold text-neutral-400">Walkthrough video available at:</p>
+                  <a 
+                    href={product.videoUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs text-gold-400 hover:underline break-all"
+                  >
+                    {product.videoUrl}
+                  </a>
+                </div>
+              );
+            })()}
+          </div>
+        </section>
+      )}
+
+      {/* -------------------- DEDICATED CUSTOMER REVIEWS & FEEDBACK SYSTEM -------------------- */}
+      <section className="mt-12 bg-[#fff] border border-cream-100 rounded-2xl p-6 md:p-10 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-10">
+        
+        {/* Left Col: Reviews Breakdown & submission form */}
+        <div className="lg:col-span-5 space-y-6">
+          <div>
+            <span className="text-[10px] tracking-[0.25em] uppercase text-gold-600 font-extrabold block">Bespoke Patron Curation</span>
+            <h3 className="text-xl md:text-2xl font-serif font-bold text-emerald-950 mt-1">Submit Your Experience</h3>
+            <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+              We highly treasure each review submitted by our luxury patrons. All reviews undergo compliance checks and are verified by our support desk before being published publicly.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmitReview} className="space-y-4 bg-cream-50/60 border border-cream-100 p-5 rounded-xl">
+            <span className="block text-xs font-bold text-emerald-950 uppercase tracking-widest border-b border-cream-100 pb-2">
+              Pen a Patron Review
+            </span>
+
+            {/* Stars Selector */}
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">
+                Your Rating *
+              </label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRevRating(star)}
+                    className="cursor-pointer transition-transform duration-100 hover:scale-[1.15]"
+                    title={`${star} Stars`}
+                  >
+                    <Star
+                      className={`w-5 h-5 ${
+                        star <= revRating ? 'text-gold-500 fill-current' : 'text-neutral-300'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Name input */}
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">
+                Full Name *
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Ayesha Bukhari"
+                value={revName}
+                onChange={(e) => setRevName(e.target.value)}
+                className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-emerald-850"
+              />
+            </div>
+
+            {/* Location input */}
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">
+                Location / City (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Islamabad, PK or London, UK"
+                value={revLocation}
+                onChange={(e) => setRevLocation(e.target.value)}
+                className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-emerald-850"
+              />
+            </div>
+
+            {/* Review content */}
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">
+                Review Message *
+              </label>
+              <textarea
+                required
+                rows={3}
+                placeholder="Describe fabric softness, zardozi work details, stitching accuracy or delivery duration..."
+                value={revComment}
+                onChange={(e) => setRevComment(e.target.value)}
+                className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-emerald-850 resize-none"
+              ></textarea>
+            </div>
+
+            {/* Validation toast */}
+            {revSubmitted && (
+              <div className="text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-150 p-2.5 rounded-lg flex items-center gap-1.5 font-medium animate-in fade-in duration-200">
+                <Check className="w-3.5 h-3.5 text-emerald-700 font-extrabold shrink-0" />
+                <span>Review submitted! Our design desk is verifying details. Thank you!</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={revSubmitting}
+              className={`w-full text-center text-[10px] font-extrabold uppercase tracking-widest py-2.5 rounded transition-all cursor-pointer ${
+                revSubmitting
+                  ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
+                  : 'bg-emerald-950 text-cream-50 hover:bg-emerald-900 border border-emerald-950'
+              }`}
+            >
+              {revSubmitting ? 'Submitting Review...' : 'Verify & Send Review'}
+            </button>
+          </form>
+        </div>
+
+        {/* Right Col: Verified patrons list */}
+        <div className="lg:col-span-7 flex flex-col justify-start">
+          <div className="border-b border-cream-100 pb-3 mb-5 flex items-center justify-between">
+            <h4 className="font-serif font-bold text-emerald-950 tracking-wide text-lg flex items-center gap-2">
+              <Star className="w-4 h-4 text-gold-500 fill-current" />
+              <span>Verified Patron Ledger ({reviews.filter(r => r.verified).length})</span>
+            </h4>
+            <span className="text-[10px] bg-emerald-50 text-emerald-905 px-2.5 py-1 uppercase tracking-widest font-mono font-bold rounded-full">
+              100% Curated Quality
+            </span>
+          </div>
+
+          <div className="space-y-4 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar">
+            {reviews.filter(r => r.verified).length === 0 ? (
+              <div className="text-center py-12 bg-cream-50/45 rounded-xl border border-dashed border-cream-150 text-neutral-400 p-6 space-y-2">
+                <Star className="w-10 h-10 mx-auto text-neutral-300 stroke-1 animate-pulse" />
+                <p className="text-xs font-semibold">No verified reviews for this product line yet.</p>
+                <p className="text-[10px] text-neutral-400 font-sans">Be the first custom patron to pen your embroidery experience above.</p>
+              </div>
+            ) : (
+              reviews.filter(r => r.verified).map((rev) => (
+                <div key={rev.id} className="bg-cream-50/30 border border-cream-100 p-4 rounded-xl flex flex-col justify-between transition-all hover:border-gold-200">
+                  <div className="space-y-1.5">
+                    {/* Stars bar */}
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map((item) => (
+                        <Star
+                          key={item}
+                          className={`w-3.5 h-3.5 ${
+                            item <= rev.rating ? 'text-gold-500 fill-current' : 'text-neutral-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-neutral-700 leading-relaxed font-sans">{rev.comment}</p>
+                  </div>
+
+                  <div className="flex justify-between items-center border-t border-cream-100/50 mt-4 pt-2.5 text-[10px]">
+                    <div>
+                      <span className="font-bold text-emerald-950 block font-serif">{rev.name}</span>
+                      <span className="text-neutral-400 block">{rev.location}</span>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-neutral-400">{rev.date}</span>
+                      <span className="bg-emerald-50 text-emerald-800 text-[8px] font-extrabold px-2 py-0.5 rounded uppercase font-mono tracking-wider">
+                        🛡️ Verified Buyer
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+      </section>
+
+      {/* -------------------- BOUTIQUE VIDEO PATH LIGHTBOX (FALLBACK) -------------------- */}
       {isVideoPlaying && product.videoUrl && (
         <div className="fixed inset-0 bg-[#000]/80 backdrop-blur-md flex items-center justify-center p-4 z-[95] animate-in fade-in duration-200">
           <div className="bg-[#111] rounded-2xl w-full max-w-3xl overflow-hidden border border-neutral-800 shadow-2xl relative animate-in zoom-in-95 duration-200">

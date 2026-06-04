@@ -64,11 +64,11 @@ export const seedIfEmpty = async () => {
     if (!setErr && (!sSet || sSet.length === 0)) {
       await supabase.from('website_settings').insert({
         id: 1,
-        store_name: 'Mushq Outfits',
+        store_name: 'Outfits by Mushq',
         whatsapp_number: '+92 302 0038010',
         facebook_link: 'https://facebook.com/mushqpk',
-        seo_title: 'Mushq Outfits | Luxury Pakistani Women Fashion Brand',
-        seo_description: 'Shop exquisite luxury unstitched lawn, velvet peshwas, organza tunics, premium party wear and stitched formal wear at Mushq Outfits Karachi.',
+        seo_title: 'Outfits by Mushq | Luxury Pakistani Women Fashion Brand',
+        seo_description: 'Shop exquisite luxury unstitched lawn, velvet peshwas, organza tunics, premium party wear and stitched formal wear at Outfits by Mushq.',
         seo_keywords: 'pakistani fashion, boutique, lawn, party wear, luxury dresses'
       });
     }
@@ -354,6 +354,16 @@ export const addReview = async (review: Review): Promise<Review[]> => {
   return getReviews();
 };
 
+export const updateReviewStatus = async (id: string, approved: boolean): Promise<Review[]> => {
+  await supabase.from('reviews').update({ verified: approved }).eq('id', id);
+  return getReviews();
+};
+
+export const deleteReview = async (id: string): Promise<Review[]> => {
+  await supabase.from('reviews').delete().eq('id', id);
+  return getReviews();
+};
+
 // SEOMetadata API Async - Stored in website_settings table
 export const getSEO = async (): Promise<SEOMetadata> => {
   try {
@@ -370,14 +380,14 @@ export const getSEO = async (): Promise<SEOMetadata> => {
     }
   } catch {}
   return {
-    metaTitle: 'Mushq Outfits | Luxury Pakistani Women Fashion Brand',
-    metaDescription: 'Shop exquisite luxury unstitched lawn, velvet peshwas, organza tunics, premium party wear and stitched formal wear at Mushq Outfits Karachi. Fast nationwide cash on delivery.',
-    ogTitle: 'Mushq Outfits - Timeless Premium Pakistani Boutique',
+    metaTitle: 'Outfits by Mushq | Luxury Pakistani Women Fashion Brand',
+    metaDescription: 'Shop exquisite luxury unstitched lawn, velvet peshwas, organza tunics, premium party wear and stitched formal wear at Outfits by Mushq. Secure custom stitching available with upscale courier services worldwide.',
+    ogTitle: 'Outfits by Mushq - Timeless Premium Pakistani Boutique',
     ogDescription: 'Experience pure chiffon, cotton jacquard, micro-velvets crafted in intricate Pakistani embroidery motifs. Orders directly on WhatsApp!',
     ogImage: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?auto=format&fit=crop&w=1200&q=80',
     sitemap: 'https://mushqoutfits.pk/sitemap.xml'
   };
-};
+}
 
 export const saveSEO = async (metadata: SEOMetadata): Promise<SEOMetadata> => {
   try {
@@ -411,7 +421,7 @@ export const getWebsiteSettings = async (): Promise<WebsiteSettings> => {
     }
   } catch {}
   return {
-    storeName: 'Mushq Outfits',
+    storeName: 'Outfits by Mushq',
     whatsappNumber: '+92 302 0038010',
     facebookLink: 'https://facebook.com/mushqpk'
   };
