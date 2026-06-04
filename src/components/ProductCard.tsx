@@ -135,9 +135,9 @@ export default function ProductCard({
           
           <button
             onClick={() => onViewDetails(product.id)}
-            className="text-[10px] uppercase tracking-widest font-extrabold text-emerald-950 hover:text-gold-600 bg-cream-50 sm:bg-transparent py-2 px-3 sm:p-0 rounded border border-cream-200 sm:border-transparent sm:underline sm:underline-offset-4 cursor-pointer text-center w-full sm:w-auto min-h-[38px] flex items-center justify-center"
+            className="text-[10px] uppercase tracking-widest font-extrabold text-[#fff] bg-emerald-900 hover:bg-emerald-950 sm:text-emerald-950 sm:bg-transparent py-2.5 px-4 sm:p-0 rounded-md border border-emerald-900 sm:border-transparent sm:underline sm:underline-offset-4 cursor-pointer text-center w-full sm:w-auto min-h-[44px] sm:min-h-0 flex items-center justify-center select-none shadow-xs hover:shadow-sm"
           >
-            Order
+            Order Now
           </button>
         </div>
       </div>

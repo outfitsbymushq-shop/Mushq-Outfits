@@ -139,15 +139,11 @@ export default function App() {
 
   useEffect(() => {
     const init = async () => {
-      const startTime = Date.now();
-      await incrementVisitors(); // Increment operational visits logged
-      await refreshDatabase();
-      
-      const elapsed = Date.now() - startTime;
-      const minDuration = 800; // Fast premium brand adaptive threshold (800ms minimum)
-      if (elapsed < minDuration) {
-        await new Promise(resolve => setTimeout(resolve, minDuration - elapsed));
-      }
+      // Fetch telemetry and load store collection items in parallel without blocking UI
+      await Promise.allSettled([
+        incrementVisitors(),
+        refreshDatabase()
+      ]);
       setIsInitialLoading(false);
     };
     init();
@@ -362,7 +358,7 @@ export default function App() {
           <motion.div
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
             className="fixed inset-0 bg-emerald-950 z-[9999] flex flex-col items-center justify-center text-[#fff]"
           >
             <div className="text-center space-y-6 px-6">
@@ -1038,7 +1034,13 @@ export default function App() {
                   <Heart className="w-5 h-5 text-gold-400 fill-current" />
                   <span className="font-serif font-bold text-md tracking-wider uppercase">My Liked Vault ({wishlist.length})</span>
                 </div>
-                <button onClick={() => setWishlistOpen(false)} className="p-2 bg-emerald-900 rounded-full cursor-pointer text-[#fff]">✕</button>
+                <button 
+                  onClick={() => setWishlistOpen(false)} 
+                  className="w-10 h-10 bg-emerald-900/60 hover:bg-emerald-900 text-cream-50 rounded-full cursor-pointer active:scale-95 transition-all flex items-center justify-center select-none"
+                  aria-label="Close wishlist"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
               </div>
 
               {/* Wishlist items list scrollable */}
@@ -1248,7 +1250,13 @@ export default function App() {
                   <ShoppingBag className="w-5 h-5 text-gold-400" />
                   <span className="font-serif font-bold text-md tracking-wider uppercase select-none">My Luxury Bag ({cart.reduce((t, i) => t + i.quantity, 0)})</span>
                 </div>
-                <button onClick={() => setCartOpen(false)} className="p-2 bg-emerald-900 rounded-full cursor-pointer text-[#fff] font-mono hover:bg-emerald-800 transition-all select-none">✕</button>
+                <button 
+                  onClick={() => setCartOpen(false)} 
+                  className="w-10 h-10 bg-emerald-900/60 hover:bg-emerald-900 text-cream-50 rounded-full cursor-pointer active:scale-95 transition-all flex items-center justify-center select-none"
+                  aria-label="Close cart"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
               </div>
 
               {/* Cart items list scrollable */}
@@ -1428,33 +1436,38 @@ export default function App() {
                       <span>Direct WhatsApp Checkout Service</span>
                     </span>
 
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="Your Full Name *"
-                        required
-                        value={cartName}
-                        onChange={(e) => setCartName(e.target.value)}
-                        className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800"
-                      />
-                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Your Full Name *"
+                          required
+                          value={cartName}
+                          onChange={(e) => setCartName(e.target.value)}
+                          className="w-full bg-[#fff] border border-cream-200 rounded-lg px-3.5 py-3 text-xs text-neutral-850 focus:outline-none focus:border-emerald-800 font-medium"
+                        />
+                      </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="tel"
-                        placeholder="WhatsApp Number"
-                        value={cartPhone}
-                        onChange={(e) => setCartPhone(e.target.value)}
-                        className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800 font-mono"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Shipping Address / City"
-                        required
-                        value={cartAddress}
-                        onChange={(e) => setCartAddress(e.target.value)}
-                        className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800"
-                      />
+                      <div>
+                        <input
+                          type="tel"
+                          placeholder="WhatsApp / Contact Number (Optional)"
+                          value={cartPhone}
+                          onChange={(e) => setCartPhone(e.target.value)}
+                          className="w-full bg-[#fff] border border-cream-200 rounded-lg px-3.5 py-3 text-xs text-neutral-850 focus:outline-none focus:border-emerald-800 font-sans font-medium"
+                        />
+                      </div>
+
+                      <div>
+                        <textarea
+                          placeholder="Complete Shipping Address * (e.g., Street, Sector/Block, City)"
+                          required
+                          rows={2}
+                          value={cartAddress}
+                          onChange={(e) => setCartAddress(e.target.value)}
+                          className="w-full bg-[#fff] border border-cream-200 rounded-lg px-3.5 py-3 text-xs text-neutral-850 focus:outline-none focus:border-emerald-800 resize-none font-sans font-medium"
+                        />
+                      </div>
                     </div>
 
                     <p className="text-[9.5px] text-neutral-400 leading-tight select-none">
