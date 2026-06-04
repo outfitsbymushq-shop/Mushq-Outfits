@@ -236,43 +236,32 @@ ${productUrl}`;
         {/* RIGHT COLUMN: Interactive Details (6 cols on lg) */}
         <div className="lg:col-span-6 flex flex-col gap-6 justify-between">
           <div>
-            {/* Worldwide Delivery Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-rose-700 text-[#fff] text-[10px] uppercase font-bold tracking-[0.14em] rounded-full mb-4 shadow-sm select-none">
-              <span className="w-2 h-2 bg-red-100 rounded-full animate-ping"></span>
-              <span>Worldwide Delivery Available</span>
-            </div>
-
-            {/* Category / Fabric indicator */}
-            <div className="flex items-center gap-2 text-xs text-gold-600 font-bold uppercase tracking-widest">
-              <span>{product.category.replace('-', ' ')}</span>
-              <span>•</span>
-              <span className="text-emerald-900 border-b border-gold-305 pb-0.5">{product.fabric}</span>
-            </div>
-
             {/* Title */}
-            <h1 className="text-2xl md:text-4xl text-emerald-950 font-bold mt-3 mb-4 font-serif leading-tight">
-              {product.title}
+            <h1 className="text-xl md:text-2xl font-bold uppercase tracking-wide text-neutral-900 mt-2 mb-1 font-sans">
+              {product.title.toUpperCase()}
             </h1>
 
             {/* Price Tags */}
-            <div className="flex items-center gap-3.5 mb-5 select-none text-base md:text-lg">
+            <div className="flex items-center gap-3 mb-1 select-none text-sm md:text-base font-sans">
               {hasSale ? (
                 <>
-                  <span className="text-neutral-800 line-through tracking-wide font-sans">
+                  <span className="text-neutral-500 line-through">
                     Rs.{product.price.toLocaleString('en-PK')}
                   </span>
-                  <span className="text-red-600 font-bold tracking-wide font-sans">
+                  <span className="text-red-600 font-semibold">
                     Rs.{product.salePrice!.toLocaleString('en-PK')}
-                  </span>
-                  <span className="text-[10px] bg-rose-700 text-[#fff] font-extrabold px-1.5 py-0.5 rounded tracking-wider uppercase ml-1 font-sans">
-                    {Math.round(((product.price - product.salePrice!) / product.price) * 100)}% OFF
                   </span>
                 </>
               ) : (
-                <span className="text-neutral-900 font-bold tracking-wide font-sans">
+                <span className="text-neutral-900 font-semibold">
                   Rs.{product.price.toLocaleString('en-PK')}
                 </span>
               )}
+            </div>
+
+            {/* SKU Tag inline below price matching mockup image */}
+            <div className="text-[11px] text-neutral-400 font-sans tracking-wide uppercase mb-5">
+              SKU: {product.sku || 'N/A'}
             </div>
 
             {/* EMBEDDED DIRECT VIDEO PLAYER WALKTHROUGH */}

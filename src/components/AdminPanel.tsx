@@ -52,7 +52,7 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
   const [authError, setAuthError] = useState('');
 
   // Active Tab - Completely hide 'supabase' SQL tab
-  const [activeTab, setActiveTab ] = useState<'overview' | 'products' | 'categories' | 'banners' | 'inquiries' | 'reviews' | 'seo' | 'website_customization' | 'global_product_info'>('overview');
+  const [activeTab, setActiveTab ] = useState<'overview' | 'products' | 'categories' | 'banners' | 'inquiries' | 'seo' | 'website_customization' | 'global_product_info'>('overview');
 
   // Website Customization and Global Product Info state
   const [menuItems, setMenuItems] = useState<CustomMenuItem[]>([]);
