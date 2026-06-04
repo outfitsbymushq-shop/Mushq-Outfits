@@ -332,17 +332,28 @@ export const deleteInquiry = async (id: string): Promise<Inquiry[]> => {
 // Site Reviews API Async
 export const getReviews = async (): Promise<Review[]> => {
   await seedIfEmpty();
-  const { data, error } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
-  if (error || !data) return [];
-  return data.map(r => ({
-    id: r.id,
-    name: r.name,
-    location: r.location || '',
-    rating: r.rating,
-    comment: r.comment || '',
-    date: r.date || 'Just now',
-    verified: r.verified
-  }));
+  let dbReviews: Review[] = [];
+  try {
+    const { data } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
+    if (data && data.length > 0) {
+      dbReviews = data.map(r => ({
+        id: r.id,
+        name: r.name,
+        location: r.location || '',
+        rating: r.rating,
+        comment: r.comment || '',
+        date: r.date || 'Just now',
+        verified: r.verified
+      }));
+    }
+  } catch (err) {
+    console.warn("Silent reviews loading error:", err);
+  }
+
+  // Ensure high quality default reviews exist as fallback/starting base if missing
+  const existingNames = new Set(dbReviews.map(r => r.name.toLowerCase()));
+  const missingDefaults = DEFAULT_REVIEWS.filter(dr => !existingNames.has(dr.name.toLowerCase()));
+  return [...dbReviews, ...missingDefaults];
 };
 
 export const addReview = async (review: Review): Promise<Review[]> => {

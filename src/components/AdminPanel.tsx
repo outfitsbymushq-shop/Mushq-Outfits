@@ -14,7 +14,9 @@ import {
   getInquiries, addInquiry, deleteInquiry, updateInquiryStatus,
   getSEO, saveSEO, getReviews, getVisitors,
   getWebsiteSettings, saveWebsiteSettings, uploadImage,
-  updateReviewStatus, deleteReview
+  updateReviewStatus, deleteReview,
+  getCustomWebsiteConfigs, saveCustomWebsiteConfigs,
+  CustomWebsiteConfigs, CustomMenuItem
 } from '../storage';
 import { supabase } from '../supabaseClient';
 
@@ -50,7 +52,34 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
   const [authError, setAuthError] = useState('');
 
   // Active Tab - Completely hide 'supabase' SQL tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'categories' | 'banners' | 'inquiries' | 'reviews' | 'seo'>('overview');
+  const [activeTab, setActiveTab ] = useState<'overview' | 'products' | 'categories' | 'banners' | 'inquiries' | 'reviews' | 'seo' | 'website_customization' | 'global_product_info'>('overview');
+
+  // Website Customization and Global Product Info state
+  const [menuItems, setMenuItems] = useState<CustomMenuItem[]>([]);
+  const [announcementText, setAnnouncementText] = useState('');
+  const [announcementEnabled, setAnnouncementEnabled] = useState(true);
+  const [promo1Image, setPromo1Image] = useState('');
+  const [promo1Heading, setPromo1Heading] = useState('');
+  const [promo1Description, setPromo1Description] = useState('');
+  const [promo1ButtonText, setPromo1ButtonText] = useState('');
+  const [promo1FontColor, setPromo1FontColor] = useState('');
+  const [promo1TextPosition, setPromo1TextPosition] = useState<'left' | 'center' | 'right'>('left');
+  
+  const [promo2Image, setPromo2Image] = useState('');
+  const [promo2Heading, setPromo2Heading] = useState('');
+  const [promo2Description, setPromo2Description] = useState('');
+  const [promo2ButtonText, setPromo2ButtonText] = useState('');
+  const [promo2FontColor, setPromo2FontColor] = useState('');
+  const [promo2TextPosition, setPromo2TextPosition] = useState<'left' | 'center' | 'right'>('left');
+
+  const [bannerHeadingColor, setBannerHeadingColor] = useState('');
+  const [bannerDescColor, setBannerDescColor] = useState('');
+  const [categoriesHeadingColor, setCategoriesHeadingColor] = useState('');
+  const [categoriesDescColor, setCategoriesDescColor] = useState('');
+
+  const [globalFabricDetails, setGlobalFabricDetails] = useState('');
+  const [globalSizingCharts, setGlobalSizingCharts] = useState('');
+  const [globalDeliveryInfo, setGlobalDeliveryInfo] = useState('');
 
   // Database lists
   const [products, setProducts] = useState<Product[]>([]);
@@ -148,6 +177,35 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
   const [bannerLink, setBannerLink] = useState('');
   const [bannerActive, setBannerActive] = useState(true);
 
+  const loadCustomConfigs = () => {
+    const configs = getCustomWebsiteConfigs();
+    setMenuItems(configs.menuItems || []);
+    setAnnouncementText(configs.announcementText || '');
+    setAnnouncementEnabled(configs.announcementEnabled !== false);
+    setPromo1Image(configs.promo1?.image || '');
+    setPromo1Heading(configs.promo1?.heading || '');
+    setPromo1Description(configs.promo1?.description || '');
+    setPromo1ButtonText(configs.promo1?.buttonText || '');
+    setPromo1FontColor(configs.promo1?.fontColor || '#ffffff');
+    setPromo1TextPosition(configs.promo1?.textPosition || 'left');
+
+    setPromo2Image(configs.promo2?.image || '');
+    setPromo2Heading(configs.promo2?.heading || '');
+    setPromo2Description(configs.promo2?.description || '');
+    setPromo2ButtonText(configs.promo2?.buttonText || '');
+    setPromo2FontColor(configs.promo2?.fontColor || '#ffffff');
+    setPromo2TextPosition(configs.promo2?.textPosition || 'left');
+
+    setBannerHeadingColor(configs.bannerHeadingColor || '#ffffff');
+    setBannerDescColor(configs.bannerDescColor || '#d1d5db');
+    setCategoriesHeadingColor(configs.categoriesHeadingColor || '#ab8215');
+    setCategoriesDescColor(configs.categoriesDescColor || '#6b7280');
+
+    setGlobalFabricDetails(configs.globalFabricDetails || '');
+    setGlobalSizingCharts(configs.globalSizingCharts || '');
+    setGlobalDeliveryInfo(configs.globalDeliveryInfo || '');
+  };
+
   // Load and refresh state
   const loadDatabase = async () => {
     try {
@@ -172,8 +230,51 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
       setReviews(revs);
       const v = await getVisitors();
       setVisitorsCount(v);
+      
+      loadCustomConfigs();
     } catch (e) {
       console.error('Failed loading database in Admin:', e);
+    }
+  };
+
+  const handleSaveCustomConfigs = async () => {
+    setIsActionLoading(true);
+    try {
+      const payload: CustomWebsiteConfigs = {
+        menuItems,
+        announcementText,
+        announcementEnabled,
+        promo1: {
+          image: promo1Image,
+          heading: promo1Heading,
+          description: promo1Description,
+          buttonText: promo1ButtonText,
+          fontColor: promo1FontColor,
+          textPosition: promo1TextPosition
+        },
+        promo2: {
+          image: promo2Image,
+          heading: promo2Heading,
+          description: promo2Description,
+          buttonText: promo2ButtonText,
+          fontColor: promo2FontColor,
+          textPosition: promo2TextPosition
+        },
+        bannerHeadingColor,
+        bannerDescColor,
+        categoriesHeadingColor,
+        categoriesDescColor,
+        globalFabricDetails,
+        globalSizingCharts,
+        globalDeliveryInfo
+      };
+      saveCustomWebsiteConfigs(payload);
+      showToast('Website Configuration saved successfully!', 'success');
+      onDatabaseUpdate(); // Refresh components in App.tsx
+    } catch {
+      showToast('Error saving configuration.', 'error');
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -918,30 +1019,33 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
           </button>
 
           <button
-            onClick={() => setActiveTab('reviews')}
-            className={`w-full flex items-center justify-between px-4 py-3 text-xs font-semibold tracking-wider uppercase rounded-lg cursor-pointer transition-all ${
-              activeTab === 'reviews' ? 'bg-emerald-900 text-cream-50 shadow-md' : 'text-neutral-700 hover:bg-cream-50'
-            }`}
-          >
-            <div className="flex items-center gap-3.5">
-              <Star className="w-4.5 h-4.5" />
-              <span>Patron Reviews</span>
-            </div>
-            {reviews.length > 0 && (
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'reviews' ? 'bg-gold-500 text-emerald-950' : 'bg-gold-200 text-gold-900'}`}>
-                {reviews.length}
-              </span>
-            )}
-          </button>
-
-          <button
             onClick={() => setActiveTab('seo')}
             className={`w-full flex items-center gap-3.5 px-4 py-3 text-xs font-semibold tracking-wider uppercase rounded-lg cursor-pointer transition-all ${
-              activeTab === 'seo' ? 'bg-emerald-900 text-cream-50 shadow-md' : 'text-neutral-750 hover:bg-cream-55'
+              activeTab === 'seo' ? 'bg-emerald-900 text-cream-50 shadow-md' : 'text-neutral-700 hover:bg-cream-50'
             }`}
           >
             <Sparkles className="w-4.5 h-4.5" />
             <span>Website Settings</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('website_customization')}
+            className={`w-full flex items-center gap-3.5 px-4 py-3 text-xs font-semibold tracking-wider uppercase rounded-lg cursor-pointer transition-all ${
+              activeTab === 'website_customization' ? 'bg-emerald-900 text-cream-50 shadow-md' : 'text-neutral-700 hover:bg-cream-50'
+            }`}
+          >
+            <Palette className="w-4.5 h-4.5" />
+            <span>Website Customization</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('global_product_info')}
+            className={`w-full flex items-center gap-3.5 px-4 py-3 text-xs font-semibold tracking-wider uppercase rounded-lg cursor-pointer transition-all ${
+              activeTab === 'global_product_info' ? 'bg-emerald-900 text-cream-50 shadow-md' : 'text-neutral-700 hover:bg-cream-50'
+            }`}
+          >
+            <FileText className="w-4.5 h-4.5" />
+            <span>Global Product Info</span>
           </button>
         </div>
 
@@ -2001,124 +2105,6 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
               </div>
             </div>
           )}
-
-          {/* TAB 5.5: CUSTOMER PATRON REVIEWS MODERATION */}
-          {activeTab === 'reviews' && (
-            <div className="bg-[#fff] border border-cream-100 rounded-xl p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-cream-100 pb-4">
-                <div>
-                  <h2 className="text-md font-serif font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-2">
-                    <Star className="w-5 h-5 text-gold-500 fill-current" />
-                    <span>Patron Review Books Moderation</span>
-                  </h2>
-                  <p className="text-xs text-neutral-450">
-                    Approve, hide, or permanently purge customer feedback. Approved reviews are displayed instantly on product details and landing spaces.
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-3 py-1 bg-emerald-50 text-emerald-850 border border-emerald-100 rounded-full">
-                    {reviews.filter(r => r.verified).length} Approved
-                  </span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-3 py-1 bg-amber-50 text-amber-850 border border-amber-100 rounded-full animate-pulse">
-                    {reviews.filter(r => !r.verified).length} Pending Curation
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-cream-50/45 p-4 rounded-xl border border-cream-100 space-y-2">
-                <p className="text-xs font-semibold text-emerald-950">💡 Guidelines for Brand Review Curation</p>
-                <p className="text-[11px] text-neutral-500 leading-relaxed font-sans font-medium">
-                  Ensure the text maintains premium couture brand styling, has no unprofessional wording, and verified purchase flags are checked if indeed shipped. Click <strong className="text-emerald-900">Approve</strong> to publish live immediately. Click <strong className="text-amber-900">Hide</strong> to temporarily withdraw public access.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                {reviews.length === 0 ? (
-                  <div className="text-center py-16 bg-cream-50/10 border border-dashed border-cream-150 rounded-xl space-y-2">
-                    <Star className="w-10 h-10 mx-auto text-neutral-300 stroke-1" />
-                    <p className="text-xs text-neutral-400 font-semibold uppercase tracking-wider">Patron reviews table is empty</p>
-                    <p className="text-[11px] text-neutral-400">No patron feedback has been logged yet.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto rounded-lg border border-cream-105 bg-[#fff]">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-cream-100/60 text-emerald-950 uppercase text-[10px] tracking-widest border-b border-cream-150">
-                          <th className="p-4 font-bold">Patron / Date</th>
-                          <th className="p-4 font-bold">City / Location</th>
-                          <th className="p-4 font-bold col-span-2">Feedback Description</th>
-                          <th className="p-4 font-bold text-center">Stars</th>
-                          <th className="p-4 font-bold text-center">Live Status</th>
-                          <th className="p-4 font-bold text-right">Moderation Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-cream-100 bg-[#fff]">
-                        {reviews.map((rev) => {
-                          return (
-                            <tr key={rev.id} className="hover:bg-cream-50/40 transition-all font-sans">
-                              <td className="p-4">
-                                <div className="font-bold text-emerald-950">{rev.name}</div>
-                                <div className="text-[10px] text-neutral-400 mt-0.5">{rev.date}</div>
-                              </td>
-                              <td className="p-4 font-semibold text-neutral-650">
-                                <div className="flex items-center gap-1">
-                                  <Globe className="w-3.5 h-3.5 text-neutral-400" />
-                                  <span>{rev.location}</span>
-                                </div>
-                              </td>
-                              <td className="p-4 max-w-sm">
-                                <p className="text-neutral-750 italic break-words">"{rev.comment}"</p>
-                              </td>
-                              <td className="p-4 text-center shrink-0">
-                                <div className="flex items-center justify-center gap-0.5">
-                                  {[1, 2, 3, 4, 5].map((s) => (
-                                    <Star 
-                                      key={s} 
-                                      className={`w-3.5 h-3.5 ${s <= rev.rating ? 'text-gold-500 fill-current' : 'text-neutral-200'}`} 
-                                    />
-                                  ))}
-                                </div>
-                              </td>
-                              <td className="p-4 text-center shrink-0">
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
-                                  rev.verified 
-                                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' 
-                                    : 'bg-amber-50 text-amber-805 border border-amber-100'
-                                }`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${rev.verified ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
-                                  <span>{rev.verified ? 'Live / Approved' : 'Hidden / Pending'}</span>
-                                </span>
-                              </td>
-                              <td className="p-4 text-right shrink-0">
-                                <div className="flex items-center justify-end gap-3.5 font-bold">
-                                  <button
-                                    onClick={() => handleToggleReviewStatus(rev.id, rev.verified)}
-                                    className={`font-semibold text-[10px] uppercase tracking-wider cursor-pointer hover:underline ${
-                                      rev.verified ? 'text-amber-700 hover:text-amber-950' : 'text-emerald-700 hover:text-emerald-950'
-                                    }`}
-                                  >
-                                    {rev.verified ? 'Hide' : 'Approve'}
-                                  </button>
-                                  <span className="text-neutral-200">|</span>
-                                  <button
-                                    onClick={() => handleDeleteReviewLog(rev.id)}
-                                    className="text-rose-700 hover:text-rose-950 font-semibold text-[10px] uppercase tracking-wider cursor-pointer hover:underline"
-                                  >
-                                    Purge
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* TAB 6: WEBSITE SETTINGS & SEO */}
           {activeTab === 'seo' && (
             <div className="bg-[#fff] border border-cream-100 rounded-xl p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
@@ -2268,6 +2254,460 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                   </button>
                 </div>
               </form>
+            </div>
+          )}
+
+          {/* TAB: WEBSITE CUSTOMIZATION */}
+          {activeTab === 'website_customization' && (
+            <div className="bg-[#fff] border border-cream-100 rounded-xl p-6 shadow-sm space-y-8 animate-in fade-in duration-300">
+              <div>
+                <h2 className="text-md font-serif font-bold text-emerald-950 uppercase tracking-wider">Website View Customization Studio</h2>
+                <p className="text-xs text-neutral-400">Add or edit header links, update the announcement bar ticker, and style homepage promotional collections.</p>
+              </div>
+
+              {/* 1. Header Navigation Menu Links Builder */}
+              <div className="border border-cream-150 rounded-xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-widest flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-gold-600" />
+                    <span>Navigation Menu Management</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newId = 'menu_' + Math.random().toString(36).substring(2, 9);
+                      const newItem: CustomMenuItem = {
+                        id: newId,
+                        name: 'New Collection',
+                        type: 'category',
+                        categorySlug: 'all'
+                      };
+                      setMenuItems([...menuItems, newItem]);
+                    }}
+                    className="px-2.5 py-1.5 bg-emerald-950 hover:bg-emerald-900 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Menu Link</span>
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {menuItems.map((item, index) => (
+                    <div key={item.id} className="flex flex-col md:flex-row items-center gap-3 p-3 bg-cream-50/50 border border-cream-100 rounded-lg text-xs">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 w-full">
+                        <div>
+                          <label className="block text-[9px] font-bold text-neutral-500 uppercase mb-0.5">Link Text</label>
+                          <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => {
+                              const updated = [...menuItems];
+                              updated[index].name = e.target.value;
+                              setMenuItems(updated);
+                            }}
+                            className="w-full bg-[#fff] border border-cream-200 rounded px-2.5 py-1.5 text-xs text-neutral-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[9px] font-bold text-neutral-500 uppercase mb-0.5">Link Target Type</label>
+                          <select
+                            value={item.type}
+                            onChange={(e) => {
+                              const updated = [...menuItems];
+                              updated[index].type = e.target.value as any;
+                              if (updated[index].type !== 'category') {
+                                delete updated[index].categorySlug;
+                              } else {
+                                updated[index].categorySlug = 'all';
+                              }
+                              setMenuItems(updated);
+                            }}
+                            className="w-full bg-[#fff] border border-cream-200 rounded px-2.5 py-1.5 text-xs text-neutral-800"
+                          >
+                            <option value="home">Home Page View</option>
+                            <option value="all_collections">All Collections (Shop)</option>
+                            <option value="category">Specific Category Collection</option>
+                          </select>
+                        </div>
+                        {item.type === 'category' && (
+                          <div>
+                            <label className="block text-[9px] font-bold text-neutral-500 uppercase mb-0.5">Target Category</label>
+                            <select
+                              value={item.categorySlug || 'all'}
+                              onChange={(e) => {
+                                const updated = [...menuItems];
+                                updated[index].categorySlug = e.target.value;
+                                setMenuItems(updated);
+                              }}
+                              className="w-full bg-[#fff] border border-cream-200 rounded px-2.5 py-1.5 text-xs text-neutral-800"
+                            >
+                              <option value="all">All Category Products</option>
+                              {categories.map(cat => (
+                                <option key={cat.id} value={cat.slug}>{cat.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 self-end md:self-center">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => {
+                            if (index === 0) return;
+                            const updated = [...menuItems];
+                            const temp = updated[index];
+                            updated[index] = updated[index - 1];
+                            updated[index - 1] = temp;
+                            setMenuItems(updated);
+                          }}
+                          className="p-1 px-2 border border-cream-200 bg-[#fff] hover:bg-cream-50 rounded disabled:opacity-30 text-neutral-600 font-extrabold cursor-pointer text-[10px]"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === menuItems.length - 1}
+                          onClick={() => {
+                            if (index === menuItems.length - 1) return;
+                            const updated = [...menuItems];
+                            const temp = updated[index];
+                            updated[index] = updated[index + 1];
+                            updated[index + 1] = temp;
+                            setMenuItems(updated);
+                          }}
+                          className="p-1 px-2 border border-cream-200 bg-[#fff] hover:bg-cream-50 rounded disabled:opacity-30 text-neutral-600 font-extrabold cursor-pointer text-[10px]"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenuItems(menuItems.filter((_, i) => i !== index));
+                          }}
+                          className="p-1 text-[#9c1c1c] hover:bg-red-50 hover:text-red-700 rounded transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {menuItems.length === 0 && (
+                    <div className="text-center py-6 text-neutral-400">
+                      <p>Custom navigation menu has no links. Default header menu (Home | All Collections) will be displayed.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Announcement Bar settings */}
+              <div className="border border-cream-150 rounded-xl p-5 space-y-4">
+                <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-widest flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-emerald-800" />
+                  <span>Announcement Ticker settings</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center text-xs">
+                  <div className="md:col-span-1">
+                    <label className="block text-[10px] font-bold text-neutral-600 uppercase tracking-wider mb-1">Status</label>
+                    <button
+                      type="button"
+                      onClick={() => setAnnouncementEnabled(!announcementEnabled)}
+                      className={`px-3 py-1.5 font-bold uppercase tracking-wider text-[10px] rounded transition-all cursor-pointer ${
+                        announcementEnabled ? 'bg-emerald-900 text-cream-50' : 'bg-neutral-200 text-neutral-700'
+                      }`}
+                    >
+                      {announcementEnabled ? 'Enabled (Showing)' : 'Disabled (Hidden)'}
+                    </button>
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block text-[10px] font-bold text-[#444] uppercase tracking-wider mb-1">Ticker Announcement Message</label>
+                    <input
+                      type="text"
+                      value={announcementText}
+                      onChange={(e) => setAnnouncementText(e.target.value)}
+                      className="w-full bg-cream-50 border border-cream-200 rounded p-2.5 text-xs text-neutral-800"
+                      placeholder="LUXURY FESTIVE STITCHING & NATIONWIDE FREE SHIPPING ON INQUIRIES"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Aesthetic Color parameters */}
+              <div className="border border-cream-150 rounded-xl p-5 space-y-4">
+                <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-widest flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-gold-600" />
+                  <span>Interactive Brand Aesthetics & Text Color Keys</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="p-3 bg-cream-50/50 rounded-lg space-y-3">
+                    <h4 className="font-bold text-neutral-700 uppercase tracking-wider">Homepage Carousel Banner Text</h4>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Heading Color (e.g. #ffffff)</label>
+                      <input
+                        type="text"
+                        value={bannerHeadingColor}
+                        onChange={(e) => setBannerHeadingColor(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-2.5 py-1.5 text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Description Color (e.g. #d1d5db)</label>
+                      <input
+                        type="text"
+                        value={bannerDescColor}
+                        onChange={(e) => setBannerDescColor(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-2.5 py-1.5 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-cream-50/50 rounded-lg space-y-3">
+                    <h4 className="font-bold text-neutral-700 uppercase tracking-wider">Homepage Grid Divisions Heading Text</h4>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Title/Heading Color (e.g. #111827)</label>
+                      <input
+                        type="text"
+                        value={categoriesHeadingColor}
+                        onChange={(e) => setCategoriesHeadingColor(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-2.5 py-1.5 text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Subtitle/Description Color (e.g. #6b7280)</label>
+                      <input
+                        type="text"
+                        value={categoriesDescColor}
+                        onChange={(e) => setCategoriesDescColor(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-2.5 py-1.5 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Homepage Featured Promo Stations Settings (Promo 1 & Promo 2) */}
+              <div className="border border-cream-150 rounded-xl p-5 space-y-6">
+                <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-widest flex items-center gap-2">
+                  <Image className="w-4 h-4 text-emerald-800" />
+                  <span>Homepage Promotional Collections (Featured Stations Grid)</span>
+                </h3>
+
+                {/* Promo Station 1 (Left) */}
+                <div className="p-4 border border-cream-200 bg-cream-50/30 rounded-lg space-y-3 text-xs">
+                  <h4 className="font-bold text-emerald-900 uppercase tracking-wider">Promotional Card 1 (E.g. Summer Jacquards)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Image URL</label>
+                      <input
+                        type="url"
+                        value={promo1Image}
+                        onChange={(e) => setPromo1Image(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Card Heading</label>
+                      <input
+                        type="text"
+                        value={promo1Heading}
+                        onChange={(e) => setPromo1Heading(e.target.value)}
+                        className="w-full bg-[#fff] border border-[#d6cfb3] rounded px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Brief Narrative description</label>
+                      <input
+                        type="text"
+                        value={promo1Description}
+                        onChange={(e) => setPromo1Description(e.target.value)}
+                        className="w-full bg-[#fff] border border-[#d6cfb3] rounded px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Overlay Button Text (Optional)</label>
+                      <input
+                        type="text"
+                        value={promo1ButtonText}
+                        onChange={(e) => setPromo1ButtonText(e.target.value)}
+                        className="w-full bg-[#fff] border border-[#d6cfb3] rounded px-3 py-1.5 text-xs"
+                        placeholder="E.g. Explore Now"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Text Font Color (hex)</label>
+                      <input
+                        type="text"
+                        value={promo1FontColor}
+                        onChange={(e) => setPromo1FontColor(e.target.value)}
+                        className="w-full bg-[#fff] border border-[#d6cfb3] rounded px-3 py-1.5 text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Text Position Alignment</label>
+                      <select
+                        value={promo1TextPosition}
+                        onChange={(e) => setPromo1TextPosition(e.target.value as any)}
+                        className="w-full bg-[#fff] border border-[#d6cfb3] rounded px-3 py-1.5 text-xs"
+                      >
+                        <option value="left">Left Align</option>
+                        <option value="center">Center Align</option>
+                        <option value="right">Right Align</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Promo Station 2 (Right) */}
+                <div className="p-4 border border-cream-200 bg-cream-50/30 rounded-lg space-y-3 text-xs">
+                  <h4 className="font-bold text-emerald-900 uppercase tracking-wider">Promotional Card 2 (E.g. Karandi & Velvets)</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Image URL</label>
+                      <input
+                        type="url"
+                        value={promo2Image}
+                        onChange={(e) => setPromo2Image(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Card Heading</label>
+                      <input
+                        type="text"
+                        value={promo2Heading}
+                        onChange={(e) => setPromo2Heading(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                    <div className="col-span-1 md:col-span-2">
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Brief Narrative description</label>
+                      <input
+                        type="text"
+                        value={promo2Description}
+                        onChange={(e) => setPromo2Description(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-2.5 py-1.5 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Overlay Button Text (Optional)</label>
+                      <input
+                        type="text"
+                        value={promo2ButtonText}
+                        onChange={(e) => setPromo2ButtonText(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-1.5 text-xs"
+                        placeholder="E.g. Get Stitched"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Text Font Color (hex)</label>
+                      <input
+                        type="text"
+                        value={promo2FontColor}
+                        onChange={(e) => setPromo2FontColor(e.target.value)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-1.5 text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-neutral-500 uppercase mb-0.5">Text Position Alignment</label>
+                      <select
+                        value={promo2TextPosition}
+                        onChange={(e) => setPromo2TextPosition(e.target.value as any)}
+                        className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-1.5 text-xs"
+                      >
+                        <option value="left">Left Align</option>
+                        <option value="center">Center Align</option>
+                        <option value="right">Right Align</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2 border-t border-cream-100">
+                  <button
+                    type="button"
+                    onClick={handleSaveCustomConfigs}
+                    disabled={isActionLoading}
+                    className="px-6 py-3 bg-[#ab8215] hover:bg-[#937318] disabled:bg-[#ccc] text-[#fff] font-bold rounded-lg text-xs tracking-wider uppercase transition-colors pointer-events-auto cursor-pointer flex items-center gap-1.5 animate-pulse"
+                  >
+                    {isActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    <span>Save Website Layout Configurations</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: GLOBAL PRODUCT INFO */}
+          {activeTab === 'global_product_info' && (
+            <div className="bg-[#fff] border border-cream-100 rounded-xl p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
+              <div>
+                <h2 className="text-md font-serif font-bold text-emerald-950 uppercase tracking-wider">Global Product Page Information</h2>
+                <p className="text-xs text-neutral-400">Configure global notes on fabrics craftsmanship, standardized sizing guides, and courier/stitching timelines shown live on product detail tabs.</p>
+              </div>
+
+              <div className="space-y-6 text-xs bg-cream-50/20 p-4 rounded-xl border border-cream-100">
+                {/* 1. Global Fabric craft */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-emerald-950 uppercase tracking-widest flex items-center gap-1.5 font-serif">
+                    <FileText className="w-4 h-4 text-gold-550 shrink-0" />
+                    <span>Standardized Fabric Craftsmanship Details</span>
+                  </label>
+                  <p className="text-[10px] text-neutral-400">Automatically visible on product details tabs under "Fabric & Details" context if the custom configuration persists.</p>
+                  <textarea
+                    rows={6}
+                    value={globalFabricDetails}
+                    onChange={(e) => setGlobalFabricDetails(e.target.value)}
+                    placeholder="Primary Fabric: Lawn...&#10;&#10;Thread Craftsmanship:&#10;Fine quality embroidery..."
+                    className="w-full bg-[#fff] border border-cream-200 rounded p-3 text-xs text-neutral-800 font-sans"
+                  />
+                </div>
+
+                {/* 2. Global Sizing chart */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-emerald-950 uppercase tracking-widest flex items-center gap-1.5 font-serif">
+                    <Palette className="w-4 h-4 text-emerald-800 shrink-0" />
+                    <span>Global Standardized Sizing Chart Specifications</span>
+                  </label>
+                  <p className="text-[10px] text-neutral-400 font-sans">Used to show the standard measurements reference grid on every designer dress page.</p>
+                  <textarea
+                    rows={6}
+                    value={globalSizingCharts}
+                    onChange={(e) => setGlobalSizingCharts(e.target.value)}
+                    placeholder="S  : Chest: 36&quot; | Waist: 30&quot; | Shoulder: 14.0&quot; | Shirt Length: 39&quot;&#10;M  : Chest: 40&quot; | Waist: 34&quot; | Shoulder: 15.0&quot; | Shirt Length: 40&quot;&#10;L  : Chest: 44&quot; | Waist: 38&quot; | Shoulder: 16.0&quot; | Shirt Length: 41&quot;&#10;XL : Chest: 48&quot; | Waist: 42&quot; | Shoulder: 17.5&quot; | Shirt Length: 42&quot;"
+                    className="w-full bg-[#fff] border border-cream-200 rounded p-3 text-xs text-neutral-800 font-mono"
+                  />
+                </div>
+
+                {/* 3. Global Delivery timelines */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-emerald-950 uppercase tracking-widest flex items-center gap-1.5 font-serif">
+                    <Info className="w-4 h-4 text-gold-550 shrink-0" />
+                    <span>Standardized Courier Transit & Packing Details</span>
+                  </label>
+                  <p className="text-[10px] text-neutral-400">Specify expected stitching completion timelines, packing premium experience detail, and parcel carrier services.</p>
+                  <textarea
+                    rows={6}
+                    value={globalDeliveryInfo}
+                    onChange={(e) => setGlobalDeliveryInfo(e.target.value)}
+                    placeholder="Premium Shipping:&#10;Secured high-speed courier dispatch...&#10;&#10;stitching completion timeline:&#10;Unstitched 2-3 working days. Customized tailored dress requires 10-14 business days."
+                    className="w-full bg-[#fff] border border-cream-200 rounded p-3 text-xs text-neutral-800 font-sans"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-2 border-t border-cream-100">
+                  <button
+                    type="button"
+                    onClick={handleSaveCustomConfigs}
+                    disabled={isActionLoading}
+                    className="px-6 py-3 bg-[#ab8215] hover:bg-[#937318] disabled:bg-[#ccc] text-[#fff] font-bold rounded-lg text-xs tracking-wider uppercase transition-colors pointer-events-auto cursor-pointer flex items-center gap-1.5"
+                  >
+                    {isActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    <span>Commit Global Product Disclosures</span>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

@@ -255,22 +255,22 @@ ${productUrl}`;
             </h1>
 
             {/* Price Tags */}
-            <div className="flex items-center gap-4 py-3 px-4 bg-cream-50 rounded-xl border border-cream-100 w-fit mb-5">
+            <div className="flex items-center gap-3.5 mb-5 select-none text-base md:text-lg">
               {hasSale ? (
                 <>
-                  <span className="text-2xl font-bold text-rose-800 font-mono">
-                    Rs. {product.salePrice!.toLocaleString('en-PK')}
+                  <span className="text-neutral-800 line-through tracking-wide font-sans">
+                    Rs.{product.price.toLocaleString('en-PK')}
                   </span>
-                  <span className="text-sm text-neutral-400 line-through font-mono">
-                    Rs. {product.price.toLocaleString('en-PK')}
+                  <span className="text-red-600 font-bold tracking-wide font-sans">
+                    Rs.{product.salePrice!.toLocaleString('en-PK')}
                   </span>
-                  <span className="text-[10px] bg-rose-700 text-[#fff] font-extrabold px-2 py-1 rounded inline-flex items-center tracking-wider">
+                  <span className="text-[10px] bg-rose-700 text-[#fff] font-extrabold px-1.5 py-0.5 rounded tracking-wider uppercase ml-1 font-sans">
                     {Math.round(((product.price - product.salePrice!) / product.price) * 100)}% OFF
                   </span>
                 </>
               ) : (
-                <span className="text-2xl font-bold text-emerald-950 font-mono">
-                  Rs. {product.price.toLocaleString('en-PK')}
+                <span className="text-neutral-900 font-bold tracking-wide font-sans">
+                  Rs.{product.price.toLocaleString('en-PK')}
                 </span>
               )}
             </div>
@@ -370,7 +370,7 @@ ${productUrl}`;
 
               {activeTab === 'delivery' && (
                 <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn whitespace-pre-line">
-                  {webConfigs.globalDeliveryInfo}
+                  {webConfigs.globalDeliveryInfo || `Premium Delivery Service:\nStandard transit requires 2-4 working days across Pakistan. International shipping is dispatched via high-speed premium FedEx/DHL routing (5-8 business days).\n\nTailoring Completion:\nStitched garments have an artisan crafting queue of 12-14 business days from confirmation.`}
                 </div>
               )}
             </div>
@@ -585,171 +585,6 @@ ${productUrl}`;
         </div>
 
       </div>
-
-      {/* -------------------- DEDICATED CUSTOMER REVIEWS & FEEDBACK SYSTEM -------------------- */}
-      <section className="mt-12 bg-[#fff] border border-cream-100 rounded-2xl p-6 md:p-10 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-10">
-        
-        {/* Left Col: Reviews Breakdown & submission form */}
-        <div className="lg:col-span-5 space-y-6">
-          <div>
-            <span className="text-[10px] tracking-[0.25em] uppercase text-gold-600 font-extrabold block">Bespoke Patron Curation</span>
-            <h3 className="text-xl md:text-2xl font-serif font-bold text-emerald-950 mt-1">Submit Your Experience</h3>
-            <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-              We highly treasure each review submitted by our luxury patrons. All reviews undergo compliance checks and are verified by our support desk before being published publicly.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmitReview} className="space-y-4 bg-cream-50/60 border border-cream-100 p-5 rounded-xl">
-            <span className="block text-xs font-bold text-emerald-950 uppercase tracking-widest border-b border-cream-100 pb-2">
-              Pen a Patron Review
-            </span>
-
-            {/* Stars Selector */}
-            <div>
-              <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">
-                Your Rating *
-              </label>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setRevRating(star)}
-                    className="cursor-pointer transition-transform duration-100 hover:scale-[1.15]"
-                    title={`${star} Stars`}
-                  >
-                    <Star
-                      className={`w-5 h-5 ${
-                        star <= revRating ? 'text-gold-500 fill-current' : 'text-neutral-300'
-                      }`}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Name input */}
-            <div>
-              <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">
-                Full Name *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Ayesha Bukhari"
-                value={revName}
-                onChange={(e) => setRevName(e.target.value)}
-                className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-emerald-850"
-              />
-            </div>
-
-            {/* Location input */}
-            <div>
-              <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">
-                Location / City (Optional)
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Islamabad, PK or London, UK"
-                value={revLocation}
-                onChange={(e) => setRevLocation(e.target.value)}
-                className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-emerald-850"
-              />
-            </div>
-
-            {/* Review content */}
-            <div>
-              <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1">
-                Review Message *
-              </label>
-              <textarea
-                required
-                rows={3}
-                placeholder="Describe fabric softness, zardozi work details, stitching accuracy or delivery duration..."
-                value={revComment}
-                onChange={(e) => setRevComment(e.target.value)}
-                className="w-full bg-[#fff] border border-cream-200 rounded px-3 py-2 text-xs focus:outline-none focus:border-emerald-850 resize-none"
-              ></textarea>
-            </div>
-
-            {/* Validation toast */}
-            {revSubmitted && (
-              <div className="text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-150 p-2.5 rounded-lg flex items-center gap-1.5 font-medium animate-in fade-in duration-200">
-                <Check className="w-3.5 h-3.5 text-emerald-700 font-extrabold shrink-0" />
-                <span>Review submitted! Our design desk is verifying details. Thank you!</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={revSubmitting}
-              className={`w-full min-h-[44px] px-4 py-3 text-center text-[10px] font-extrabold uppercase tracking-widest rounded transition-all cursor-pointer flex items-center justify-center ${
-                revSubmitting
-                  ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
-                  : 'bg-emerald-950 text-cream-50 hover:bg-emerald-900 border border-emerald-950 shadow-xs'
-              }`}
-            >
-              {revSubmitting ? 'Submitting Review...' : 'Verify & Send Review'}
-            </button>
-          </form>
-        </div>
-
-        {/* Right Col: Verified patrons list */}
-        <div className="lg:col-span-7 flex flex-col justify-start">
-          <div className="border-b border-cream-100 pb-3 mb-5 flex items-center justify-between">
-            <h4 className="font-serif font-bold text-emerald-950 tracking-wide text-lg flex items-center gap-2">
-              <Star className="w-4 h-4 text-gold-500 fill-current" />
-              <span>Verified Patron Ledger ({reviews.filter(r => r.verified).length})</span>
-            </h4>
-            <span className="text-[10px] bg-emerald-50 text-emerald-905 px-2.5 py-1 uppercase tracking-widest font-mono font-bold rounded-full">
-              100% Curated Quality
-            </span>
-          </div>
-
-          <div className="space-y-4 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar">
-            {reviews.filter(r => r.verified).length === 0 ? (
-              <div className="text-center py-12 bg-cream-50/45 rounded-xl border border-dashed border-cream-150 text-neutral-400 p-6 space-y-2">
-                <Star className="w-10 h-10 mx-auto text-neutral-300 stroke-1 animate-pulse" />
-                <p className="text-xs font-semibold">No verified reviews for this product line yet.</p>
-                <p className="text-[10px] text-neutral-400 font-sans">Be the first custom patron to pen your embroidery experience above.</p>
-              </div>
-            ) : (
-              reviews.filter(r => r.verified).map((rev) => (
-                <div key={rev.id} className="bg-cream-50/30 border border-cream-100 p-4 rounded-xl flex flex-col justify-between transition-all hover:border-gold-200">
-                  <div className="space-y-1.5">
-                    {/* Stars bar */}
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3, 4, 5].map((item) => (
-                        <Star
-                          key={item}
-                          className={`w-3.5 h-3.5 ${
-                            item <= rev.rating ? 'text-gold-500 fill-current' : 'text-neutral-200'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <p className="text-xs text-neutral-700 leading-relaxed font-sans">{rev.comment}</p>
-                  </div>
-
-                  <div className="flex justify-between items-center border-t border-cream-100/50 mt-4 pt-2.5 text-[10px]">
-                    <div>
-                      <span className="font-bold text-emerald-950 block font-serif">{rev.name}</span>
-                      <span className="text-neutral-400 block">{rev.location}</span>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-neutral-400">{rev.date}</span>
-                      <span className="bg-emerald-50 text-emerald-800 text-[8px] font-extrabold px-2 py-0.5 rounded uppercase font-mono tracking-wider">
-                        🛡️ Verified Buyer
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-      </section>
 
       {/* -------------------- BOUTIQUE VIDEO PATH LIGHTBOX (FALLBACK) -------------------- */}
       {isVideoPlaying && product.videoUrl && (
