@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, MessageSquare, ShieldCheck, Sparkles, MapPin, Ruler, HelpCircle, Check, ShoppingBag, Video, Palette, Star, Globe } from 'lucide-react';
 import { Product, Inquiry, Review } from '../types';
+import { getCustomWebsiteConfigs } from '../storage';
 
 interface ProductDetailsProps {
   product: Product;
@@ -19,6 +20,7 @@ export default function ProductDetails({
   reviews,
   onAddReview
 }: ProductDetailsProps) {
+  const webConfigs = getCustomWebsiteConfigs();
   const [activeImage, setActiveImage] = useState(product.images[0]);
   const [selectedSize, setSelectedSize] = useState<string>(product.sizeInfo?.[0] || 'Unstitched');
   const [selectedColor, setSelectedColor] = useState<string>(product.colors?.[0] || '');
@@ -235,8 +237,8 @@ ${productUrl}`;
         <div className="lg:col-span-6 flex flex-col gap-6 justify-between">
           <div>
             {/* Worldwide Delivery Badge */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-650 text-[#fff] text-[9px] uppercase font-extrabold tracking-widest rounded-full mb-4 shadow-sm select-none">
-              <span className="w-1.5 h-1.5 bg-red-100 rounded-full animate-ping"></span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-rose-700 text-[#fff] text-[10px] uppercase font-bold tracking-[0.14em] rounded-full mb-4 shadow-sm select-none">
+              <span className="w-2 h-2 bg-red-100 rounded-full animate-ping"></span>
               <span>Worldwide Delivery Available</span>
             </div>
 
@@ -253,7 +255,7 @@ ${productUrl}`;
             </h1>
 
             {/* Price Tags */}
-            <div className="flex items-center gap-4 py-3 px-4 bg-cream-50 rounded-xl border border-cream-100 w-fit mb-6">
+            <div className="flex items-center gap-4 py-3 px-4 bg-cream-50 rounded-xl border border-cream-100 w-fit mb-5">
               {hasSale ? (
                 <>
                   <span className="text-2xl font-bold text-rose-800 font-mono">
@@ -262,8 +264,8 @@ ${productUrl}`;
                   <span className="text-sm text-neutral-400 line-through font-mono">
                     Rs. {product.price.toLocaleString('en-PK')}
                   </span>
-                  <span className="text-xs bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded">
-                    Save Rs. {(product.price - product.salePrice!).toLocaleString('en-PK')}
+                  <span className="text-[10px] bg-rose-700 text-[#fff] font-extrabold px-2 py-1 rounded inline-flex items-center tracking-wider">
+                    {Math.round(((product.price - product.salePrice!) / product.price) * 100)}% OFF
                   </span>
                 </>
               ) : (
@@ -272,6 +274,59 @@ ${productUrl}`;
                 </span>
               )}
             </div>
+
+            {/* EMBEDDED DIRECT VIDEO PLAYER WALKTHROUGH */}
+            {product.videoUrl && (
+              <div className="my-5 bg-emerald-950 text-[#fff] rounded-xl overflow-hidden shadow-md border border-gold-300/20 p-4">
+                <div className="flex items-center justify-between gap-1.5 mb-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <Video className="w-3.5 h-3.5 text-gold-400 shrink-0" />
+                    <span className="text-[10px] tracking-wider uppercase text-gold-300 font-extrabold font-sans">
+                      Boutique Video Walkthrough
+                    </span>
+                  </div>
+                  <span className="text-[8px] uppercase tracking-widest text-[#fff]/60">Inline Playback</span>
+                </div>
+                <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-neutral-800 bg-[#000] shadow-sm">
+                  {(() => {
+                    let id = '';
+                    const url = product.videoUrl;
+                    if (url.includes('youtu.be/')) {
+                      id = url.split('youtu.be/')[1]?.split('?')[0] || '';
+                    } else if (url.includes('youtube.com/watch')) {
+                      id = url.split('v=')[1]?.split('&')[0] || '';
+                    } else if (url.includes('youtube.com/embed/')) {
+                      id = url.split('embed/')[1]?.split('?')[0] || '';
+                    }
+                    const embedUrl = id ? `https://www.youtube.com/embed/${id}` : null;
+                    
+                    return embedUrl ? (
+                      <iframe
+                        src={`${embedUrl}?rel=0`}
+                        title="Embedded Runway Presentation Walkthrough"
+                        frameBorder="0"
+                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        className="absolute inset-0 w-full h-full"
+                      ></iframe>
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-4 text-center">
+                        <Video className="w-8 h-8 text-neutral-600 animate-pulse" />
+                        <p className="text-[10px] text-neutral-400">Video available:</p>
+                        <a 
+                          href={product.videoUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-gold-400 hover:underline break-all"
+                        >
+                          {product.videoUrl}
+                        </a>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
 
             {/* Product Narrative description block */}
             <p className="text-sm text-neutral-600 leading-relaxed mb-6 font-sans">
@@ -302,31 +357,20 @@ ${productUrl}`;
               </div>
 
               {activeTab === 'fabric' && (
-                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn">
-                  <p><strong>Primary Fabric:</strong> {product.fabric}</p>
-                  <p><strong>Thread Craftsmanship:</strong> Fine quality handcraft, zari embellishments, tilla borders, Gota work, and sequins matching.</p>
-                  <p><strong>Components Details:</strong> 3-Piece complete dress (includes stitched/unstitched inner lining slip, matching styled trousers, and premium customized premium dupatta).</p>
+                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn whitespace-pre-line">
+                  {webConfigs.globalFabricDetails || `Primary Fabric: ${product.fabric}\n\nThread Craftsmanship:\nFine quality handcraft, zari embellishments, tilla borders, gota work, and matching sequins.\n\nComponents:\n3-piece complete dress including matching trousers and premium dupatta.`}
                 </div>
               )}
 
               {activeTab === 'sizing' && (
-                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn">
-                  <p>We support a complete standard sizing chart (Standard PK sizing guidelines):</p>
-                  <div className="grid grid-cols-4 gap-2 text-center border-t border-cream-100 pt-2 font-mono">
-                    <span className="bg-cream-50 p-1.5 rounded"><strong>S:</strong> Chest 36"</span>
-                    <span className="bg-cream-50 p-1.5 rounded"><strong>M:</strong> Chest 40"</span>
-                    <span className="bg-cream-50 p-1.5 rounded"><strong>L:</strong> Chest 44"</span>
-                    <span className="bg-cream-50 p-1.5 rounded"><strong>XL:</strong> Chest 48"</span>
-                  </div>
-                  <p className="text-[11px] text-[#ab8215] mt-1 italic">★ Custom stitching is completed by expert tailors to guarantee the absolute best fit according to your customized chest and lengths.</p>
+                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn whitespace-pre-line">
+                  {webConfigs.globalSizingCharts || `S  : Chest: 36" | Waist: 30" | Shoulder: 14.0" | Shirt Length: 39"\nM  : Chest: 40" | Waist: 34" | Shoulder: 15.0" | Shirt Length: 40"\nL  : Chest: 44" | Waist: 38" | Shoulder: 16.0" | Shirt Length: 41"\nXL : Chest: 48" | Waist: 42" | Shoulder: 17.5" | Shirt Length: 42"`}
                 </div>
               )}
 
               {activeTab === 'delivery' && (
-                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn">
-                  <p><strong>Premium Shipping:</strong> Secured high-speed courier dispatch with full insurance and real-time transit tracking across Pakistan and worldwide.</p>
-                  <p><strong>Fulfillment Duration:</strong> 2-3 working days for unstitched fabrics. Tailoring orders require 10-14 working days for premium hand-finishing stitching.</p>
-                  <p><strong>Boutique Packaging:</strong> Delivered inside premium Outfits by Mushq custom-lined luxury hardbound boxes containing verification tags and styling instructions.</p>
+                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn whitespace-pre-line">
+                  {webConfigs.globalDeliveryInfo}
                 </div>
               )}
             </div>
@@ -541,61 +585,6 @@ ${productUrl}`;
         </div>
 
       </div>
-
-      {/* -------------------- EMBEDDED DIRECT VIDEO PLAYER WALKTHROUGH -------------------- */}
-      {product.videoUrl && (
-        <section className="mt-12 bg-emerald-950 text-[#fff] rounded-2xl overflow-hidden shadow-xl border border-gold-350/20 p-6 md:p-10 animate-in fade-in slide-in-from-bottom-5 duration-300">
-          <div className="max-w-3xl mx-auto text-center mb-8">
-            <span className="text-[10px] tracking-[0.3em] uppercase text-gold-300 font-extrabold flex items-center justify-center gap-1.5 mb-2">
-              <Video className="w-4 h-4 text-gold-400" />
-              <span>Showcase Runway Experience</span>
-            </span>
-            <h3 className="text-xl md:text-3xl font-serif font-bold tracking-wide text-cream-50">Boutique Video Walkthrough</h3>
-            <p className="text-xs text-neutral-300 font-sans mt-2 max-w-xl mx-auto">
-              Observe true fabric weights, draping dynamics, and precise embroidery reflections in high-fidelity motion.
-            </p>
-          </div>
-
-          <div className="relative aspect-video max-w-4xl mx-auto rounded-xl overflow-hidden border border-neutral-800 bg-[#000] shadow-2xl">
-            {(() => {
-              let id = '';
-              const url = product.videoUrl;
-              if (url.includes('youtu.be/')) {
-                id = url.split('youtu.be/')[1]?.split('?')[0] || '';
-              } else if (url.includes('youtube.com/watch')) {
-                id = url.split('v=')[1]?.split('&')[0] || '';
-              } else if (url.includes('youtube.com/embed/')) {
-                id = url.split('embed/')[1]?.split('?')[0] || '';
-              }
-              const embedUrl = id ? `https://www.youtube.com/embed/${id}` : null;
-              
-              return embedUrl ? (
-                <iframe
-                  src={`${embedUrl}?rel=0`}
-                  title="Embedded Runway Presentation Walkthrough"
-                  frameBorder="0"
-                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  className="absolute inset-0 w-full h-full"
-                ></iframe>
-              ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
-                  <Video className="w-10 h-10 text-neutral-600 animate-pulse" />
-                  <p className="text-xs font-semibold text-neutral-400">Walkthrough video available at:</p>
-                  <a 
-                    href={product.videoUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-xs text-gold-400 hover:underline break-all"
-                  >
-                    {product.videoUrl}
-                  </a>
-                </div>
-              );
-            })()}
-          </div>
-        </section>
-      )}
 
       {/* -------------------- DEDICATED CUSTOMER REVIEWS & FEEDBACK SYSTEM -------------------- */}
       <section className="mt-12 bg-[#fff] border border-cream-100 rounded-2xl p-6 md:p-10 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-10">

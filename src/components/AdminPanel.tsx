@@ -1525,32 +1525,13 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                       </div>
 
                       {/* Description System Text Area */}
-                      <div className="border border-gold-200 bg-[#faf9f5] rounded-xl p-4 space-y-3">
-                        <div className="flex justify-between items-center">
-                          <label className="block text-xs font-bold text-emerald-950 uppercase tracking-widest flex items-center gap-1.5 font-serif">
-                            <Sparkles className="w-4 h-4 text-gold-500" />
-                            <span>Product Narrative Description *</span>
-                          </label>
-                          <button
-                            type="button"
-                            onClick={generateAIDescription}
-                            id="btn-gemini-desc-suggest"
-                            disabled={isAiGenerating}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950 hover:bg-emerald-900 hover:shadow disabled:bg-neutral-400 text-cream-50 text-[10px] font-bold tracking-wider uppercase rounded-full pointer-events-auto cursor-pointer transition-all"
-                          >
-                            <RefreshCw className={`w-3 h-3 ${isAiGenerating ? 'animate-spin' : ''}`} />
-                            <span>{isAiGenerating ? 'Gemini composing...' : 'Suggest description (AI)'}</span>
-                          </button>
-                        </div>
+                      <div className="border border-cream-202 bg-[#fff] rounded-xl p-4 space-y-3">
+                        <label className="block text-xs font-bold text-emerald-950 uppercase tracking-widest font-serif">
+                          <span>Product Description</span>
+                        </label>
                         
-                        {aiError && (
-                          <p className="text-[10px] text-emerald-800 bg-emerald-100 rounded border border-emerald-200 px-2 py-1 select-none animate-bounce">
-                            ℹ {aiError}
-                          </p>
-                        )}
-
                         <textarea
-                          rows={6}
+                          rows={5}
                           required
                           value={prodDesc}
                           onChange={(e) => setProdDesc(e.target.value)}

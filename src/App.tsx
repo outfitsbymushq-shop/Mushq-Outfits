@@ -9,7 +9,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Product, Category, Banner, Inquiry, Review, CartItem } from './types';
 import { 
   getProducts, getCategories, getBanners, getSEO, getReviews,
-  addInquiry, incrementVisitors, getWebsiteSettings, addReview
+  addInquiry, incrementVisitors, getWebsiteSettings, addReview,
+  getCustomWebsiteConfigs
 } from './storage';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -18,6 +19,7 @@ import ProductDetails from './components/ProductDetails';
 import AdminPanel from './components/AdminPanel';
 
 export default function App() {
+  const webConfigs = getCustomWebsiteConfigs();
   // Brand initial loading state
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -481,6 +483,7 @@ export default function App() {
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.3, duration: 0.6 }}
                         className="text-3xl md:text-6xl font-serif font-bold tracking-wide italic leading-tight max-w-xl md:max-w-3xl"
+                        style={{ color: webConfigs.bannerHeadingColor || '#ffffff' }}
                       >
                         {banners[activeSlide].title}
                       </motion.h2>
@@ -489,7 +492,8 @@ export default function App() {
                         initial={{ y: 20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         transition={{ delay: 0.4, duration: 0.6 }}
-                        className="text-xs md:text-sm text-neutral-300 tracking-wider max-w-md mt-4 font-sans font-light"
+                        className="text-xs md:text-sm tracking-wider max-w-md mt-4 font-sans font-light"
+                        style={{ color: webConfigs.bannerDescColor || '#d1d5db' }}
                       >
                         {banners[activeSlide].subtitle}
                       </motion.p>
@@ -544,11 +548,11 @@ export default function App() {
             {/* HIGH-FASHION DECLARATION BLOCK */}
             <section className="text-center max-w-3xl mx-auto px-4 py-8">
               <span className="text-[10px] tracking-[0.35em] text-gold-600 font-extrabold block uppercase mb-3">Est. Karachi Boutique</span>
-              <h2 className="text-2xl md:text-3xl font-serif text-emerald-950 font-bold mb-4 tracking-wide leading-snug">
+              <h2 className="text-2xl md:text-3xl font-serif text-emerald-950 font-bold mb-4 tracking-wide leading-snug" style={{ color: webConfigs.categoriesHeadingColor || undefined }}>
                 Where Traditional Grace Meets Absolute Modern Craft
               </h2>
               <div className="w-16 h-0.5 bg-gold-400 mx-auto my-6" />
-              <p className="text-xs md:text-sm text-neutral-500 leading-relaxed font-sans max-w-2xl mx-auto font-light">
+              <p className="text-xs md:text-sm text-neutral-500 leading-relaxed font-sans max-w-2xl mx-auto font-light" style={{ color: webConfigs.categoriesDescColor || undefined }}>
                 Each apparel set inside the Mushq Outfits vault is created collectively by elite Pakistani textile looms and skilled handcraft artisans. Tailored beautifully under professional monitors, our apparel ensures you look exceptionally opulent on pre-wedding festivities, formal dinners, and summer events.
               </p>
             </section>
@@ -557,7 +561,7 @@ export default function App() {
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative mb-12">
               <div className="flex items-center justify-between mb-8 select-none">
                 <div className="w-12 md:w-1/4 h-[1px] bg-gradient-to-r from-transparent to-gold-400" />
-                <h3 className="text-[11px] md:text-[13px] font-bold tracking-[0.35em] text-gold-700 uppercase text-center font-sans shrink-0 px-4">
+                <h3 className="text-[11px] md:text-[13px] font-bold tracking-[0.35em] text-gold-700 uppercase text-center font-sans shrink-0 px-4" style={{ color: webConfigs.categoriesHeadingColor || undefined }}>
                   Featured Boutique Divisions
                 </h3>
                 <div className="w-12 md:w-1/4 h-[1px] bg-gradient-to-l from-transparent to-gold-400" />
@@ -647,7 +651,7 @@ export default function App() {
                             </p>
                             
                             <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-cream-100/10">
-                              <span className="text-[9px] uppercase tracking-widest font-sans font-bold text-gold-440">
+                              <span className="text-[9px] uppercase tracking-widest font-sans font-bold text-[#fff]">
                                 {styleCount > 0 ? `${styleCount} Designs Released` : 'Bespoke Collection'}
                               </span>
                               <span className="text-gold-300 text-xs transform -translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 font-mono">
@@ -704,37 +708,85 @@ export default function App() {
             {/* SPLIT LUXURY COLLECTION STATIONS */}
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-8">
               
-              {/* Summer Station */}
-              <div className="relative aspect-[16/10] rounded-none overflow-hidden border border-cream-150 group cursor-pointer"
-                   onClick={() => { setActiveCategory('summer-collection'); setCurrentView('shop'); }}>
+              {/* Promo 1 Card */}
+              <div 
+                className="relative aspect-[16/10] rounded-none overflow-hidden border border-cream-150 group cursor-pointer"
+                onClick={() => { setActiveCategory('summer-collection'); setCurrentView('shop'); }}
+              >
                 <img
-                  src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80"
-                  alt="Summer closet"
+                  src={webConfigs.promo1.image || 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80'}
+                  alt={webConfigs.promo1.heading || 'Summer collection'}
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-emerald-950/45 group-hover:bg-emerald-950/35 transition-colors" />
-                <div className="absolute inset-6 md:inset-10 flex flex-col justify-end text-[#fff]">
-                  <span className="text-[10px] uppercase font-semibold tracking-[0.25em] text-gold-300">Sumptuous Breathability</span>
-                  <h3 className="text-xl md:text-3xl font-serif font-bold tracking-wide mt-2">The Summer Jacquards</h3>
-                  <p className="text-xs text-neutral-200 mt-2 font-sans font-light opacity-95">Fine cotton woven threads with organza patchings and airy silk borders.</p>
+                <div 
+                  className="absolute inset-6 md:inset-10 flex flex-col justify-end"
+                  style={{ 
+                    color: webConfigs.promo1.fontColor || '#ffffff',
+                    textAlign: webConfigs.promo1.textPosition || 'left',
+                    alignItems: webConfigs.promo1.textPosition === 'center' ? 'center' : webConfigs.promo1.textPosition === 'right' ? 'flex-end' : 'flex-start'
+                  }}
+                >
+                  <span className="text-[10px] uppercase font-semibold tracking-[0.25em]" style={{ color: 'inherit', opacity: 0.85 }}>Sumptuous Collection</span>
+                  <h3 className="text-xl md:text-3xl font-serif font-bold tracking-wide mt-2" style={{ color: 'inherit' }}>
+                    {webConfigs.promo1.heading || 'The Summer Jacquards'}
+                  </h3>
+                  <p className="text-xs mt-2 font-sans font-light opacity-95 max-w-md" style={{ color: 'inherit' }}>
+                    {webConfigs.promo1.description || 'Fine cotton woven threads with organza patchings and airy silk borders.'}
+                  </p>
+                  {webConfigs.promo1.buttonText && (
+                    <button 
+                      className="mt-4 px-4 py-2 text-[10px] tracking-widest font-extrabold uppercase border rounded-md hover:bg-[#fff]/15 transition-all w-fit" 
+                      style={{ 
+                        borderColor: webConfigs.promo1.fontColor || '#ffffff', 
+                        color: webConfigs.promo1.fontColor || '#ffffff' 
+                      }}
+                    >
+                      {webConfigs.promo1.buttonText}
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Winter Station */}
-              <div className="relative aspect-[16/10] rounded-none overflow-hidden border border-cream-150 group cursor-pointer"
-                   onClick={() => { setActiveCategory('winter-collection'); setCurrentView('shop'); }}>
+              {/* Promo 2 Card */}
+              <div 
+                className="relative aspect-[16/10] rounded-none overflow-hidden border border-cream-150 group cursor-pointer"
+                onClick={() => { setActiveCategory('winter-collection'); setCurrentView('shop'); }}
+              >
                 <img
-                  src="https://images.unsplash.com/photo-1605721911519-3dfeb3be25e7?auto=format&fit=crop&w=800&q=80"
-                  alt="Winter luxury"
+                  src={webConfigs.promo2.image || 'https://images.unsplash.com/photo-1605721911519-3dfeb3be25e7?auto=format&fit=crop&w=800&q=80'}
+                  alt={webConfigs.promo2.heading || 'Winter collection'}
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-emerald-950/45 group-hover:bg-emerald-950/35 transition-colors" />
-                <div className="absolute inset-6 md:inset-10 flex flex-col justify-end text-[#fff]">
-                  <span className="text-[10px] uppercase font-semibold tracking-[0.25em] text-gold-300">Sumptuous Heaviness</span>
-                  <h3 className="text-xl md:text-3xl font-serif font-bold tracking-wide mt-2">Bespoke Karandi & Velvets</h3>
-                  <p className="text-xs text-neutral-200 mt-2 font-sans font-light opacity-95">Earthy shades, micro-spun fibers, heavy Kashmiri-style wool duppatas.</p>
+                <div 
+                  className="absolute inset-6 md:inset-10 flex flex-col justify-end"
+                  style={{ 
+                    color: webConfigs.promo2.fontColor || '#ffffff',
+                    textAlign: webConfigs.promo2.textPosition || 'left',
+                    alignItems: webConfigs.promo2.textPosition === 'center' ? 'center' : webConfigs.promo2.textPosition === 'right' ? 'flex-end' : 'flex-start'
+                  }}
+                >
+                  <span className="text-[10px] uppercase font-semibold tracking-[0.25em]" style={{ color: 'inherit', opacity: 0.85 }}>Sumptuous Collection</span>
+                  <h3 className="text-xl md:text-3xl font-serif font-bold tracking-wide mt-2" style={{ color: 'inherit' }}>
+                    {webConfigs.promo2.heading || 'Bespoke Karandi & Velvets'}
+                  </h3>
+                  <p className="text-xs mt-2 font-sans font-light opacity-95 max-w-md" style={{ color: 'inherit' }}>
+                    {webConfigs.promo2.description || 'Earthy shades, micro-spun fibers, heavy Kashmiri-style wool duppatas.'}
+                  </p>
+                  {webConfigs.promo2.buttonText && (
+                    <button 
+                      className="mt-4 px-4 py-2 text-[10px] tracking-widest font-extrabold uppercase border rounded-md hover:bg-[#fff]/15 transition-all w-fit" 
+                      style={{ 
+                        borderColor: webConfigs.promo2.fontColor || '#ffffff', 
+                        color: webConfigs.promo2.fontColor || '#ffffff' 
+                      }}
+                    >
+                      {webConfigs.promo2.buttonText}
+                    </button>
+                  )}
                 </div>
               </div>
 

@@ -44,8 +44,8 @@ export default function ProductCard({
         {/* Floating Luxury Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
           {hasSale && (
-            <span className="bg-rose-700 text-[#fff] text-[9px] font-extrabold tracking-widest uppercase px-2 py-0.5 rounded-sm shadow-sm">
-              SALE
+            <span className="bg-rose-700 text-[#fff] text-[9.5px] font-extrabold tracking-widest uppercase px-2 py-1 rounded-sm shadow-sm font-sans">
+              {Math.round(((product.price - product.salePrice!) / product.price) * 100)}% OFF
             </span>
           )}
           {product.isFeatured && (
@@ -135,7 +135,7 @@ export default function ProductCard({
           
           <button
             onClick={() => onViewDetails(product.id)}
-            className="text-[10px] uppercase tracking-widest font-extrabold text-[#fff] bg-emerald-900 hover:bg-emerald-950 sm:text-emerald-950 sm:bg-transparent py-2.5 px-4 sm:p-0 rounded-md border border-emerald-900 sm:border-transparent sm:underline sm:underline-offset-4 cursor-pointer text-center w-full sm:w-auto min-h-[44px] sm:min-h-0 flex items-center justify-center select-none shadow-xs hover:shadow-sm"
+            className="text-[10px] uppercase tracking-widest font-extrabold text-[#fff] hover:text-[#fff] bg-emerald-900 hover:bg-emerald-950 py-2.5 px-4 rounded-md border border-emerald-900 cursor-pointer text-center w-full sm:w-auto min-h-[44px] sm:min-h-0 flex items-center justify-center select-none shadow-xs hover:shadow-sm transition-all focus:outline-none"
           >
             Order Now
           </button>

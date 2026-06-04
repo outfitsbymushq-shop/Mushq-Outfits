@@ -440,6 +440,106 @@ export const saveWebsiteSettings = async (settings: WebsiteSettings): Promise<We
   return getWebsiteSettings();
 };
 
+export interface CustomMenuItem {
+  id: string;
+  name: string;
+  type: 'home' | 'all_collections' | 'category';
+  categorySlug?: string;
+}
+
+export interface CustomWebsiteConfigs {
+  menuItems: CustomMenuItem[];
+  announcementText: string;
+  announcementEnabled: boolean;
+  promo1: {
+    image: string;
+    heading: string;
+    description: string;
+    buttonText: string;
+    fontColor: string;
+    textPosition: 'left' | 'center' | 'right';
+  };
+  promo2: {
+    image: string;
+    heading: string;
+    description: string;
+    buttonText: string;
+    fontColor: string;
+    textPosition: 'left' | 'center' | 'right';
+  };
+  bannerHeadingColor: string;
+  bannerDescColor: string;
+  categoriesHeadingColor: string;
+  categoriesDescColor: string;
+  globalFabricDetails: string;
+  globalSizingCharts: string;
+  globalDeliveryInfo: string;
+}
+
+const DEFAULT_CUSTOM_CONFIGS: CustomWebsiteConfigs = {
+  menuItems: [
+    { id: 'menu_home', name: 'Home', type: 'home' },
+    { id: 'menu_all', name: 'All Collections', type: 'all_collections' },
+    { id: 'menu_bridal', name: 'Bridal Collection', type: 'category', categorySlug: 'bridal-collection' },
+    { id: 'menu_casual', name: 'Casual Wear', type: 'category', categorySlug: 'casual-wear' },
+    { id: 'menu_pret', name: 'Luxury Pret', type: 'category', categorySlug: 'luxury-pret' },
+    { id: 'menu_summer', name: 'Summer Collection', type: 'category', categorySlug: 'summer-collection' }
+  ],
+  announcementText: 'LUXURY FESTIVE STITCHING & NATIONWIDE FREE SHIPPING ON INQUIRIES',
+  announcementEnabled: true,
+  promo1: {
+    image: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=800&q=80',
+    heading: 'The Summer Jacquards',
+    description: 'Fine cotton woven threads with organza patchings and airy silk borders.',
+    buttonText: 'Discover Summer',
+    fontColor: '#ffffff',
+    textPosition: 'left'
+  },
+  promo2: {
+    image: 'https://images.unsplash.com/photo-1605721911519-3dfeb3be25e7?auto=format&fit=crop&w=800&q=80',
+    heading: 'Bespoke Karandi & Velvets',
+    description: 'Earthy shades, micro-spun fibers, heavy Kashmiri-style wool duppatas.',
+    buttonText: 'Discover Winter',
+    fontColor: '#ffffff',
+    textPosition: 'left'
+  },
+  bannerHeadingColor: '#ffffff',
+  bannerDescColor: '#d1d5db',
+  categoriesHeadingColor: '#ab8215',
+  categoriesDescColor: '#6b7280',
+  globalFabricDetails: `Primary Fabric: Cotton Lawn\n\nThread Craftsmanship:\nFine quality handcraft, zari embellishments, tilla borders, gota work, and matching sequins.\n\nComponents:\n3-piece complete dress including matching trousers and premium dupatta.`,
+  globalSizingCharts: `Standard Sizing Reference (Inches):\n- S  : Chest: 36" | Waist: 30" | Shoulder: 14.0" | Shirt Length: 39"\n- M  : Chest: 40" | Waist: 34" | Shoulder: 15.0" | Shirt Length: 40"\n- L  : Chest: 44" | Waist: 38" | Shoulder: 16.0" | Shirt Length: 41"\n- XL : Chest: 48" | Waist: 42" | Shoulder: 17.5" | Shirt Length: 42"\n- Custom: Hand-tailored to your exact requested dimensions.`,
+  globalDeliveryInfo: `Premium Shipping:\nSecured high-speed courier dispatch with full insurance and real-time transit tracking across Pakistan and worldwide.\n\nFulfillment Duration:\n2-3 working days for unstitched fabrics. Tailoring orders require 10-14 working days for premium hand-finishing stitching.\n\nBoutique Packaging:\nDelivered inside premium Outfits by Mushq custom-lined luxury hardbound boxes.`
+};
+
+export const getCustomWebsiteConfigs = (): CustomWebsiteConfigs => {
+  try {
+    const saved = localStorage.getItem('mushq_custom_web_configs');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Ensure all keys are populated
+      return {
+        ...DEFAULT_CUSTOM_CONFIGS,
+        ...parsed,
+        promo1: { ...DEFAULT_CUSTOM_CONFIGS.promo1, ...(parsed.promo1 || {}) },
+        promo2: { ...DEFAULT_CUSTOM_CONFIGS.promo2, ...(parsed.promo2 || {}) }
+      };
+    }
+  } catch (e) {
+    console.warn('Failed to parse custom website configs:', e);
+  }
+  return DEFAULT_CUSTOM_CONFIGS;
+};
+
+export const saveCustomWebsiteConfigs = (configs: CustomWebsiteConfigs): CustomWebsiteConfigs => {
+  try {
+    localStorage.setItem('mushq_custom_web_configs', JSON.stringify(configs));
+  } catch (e) {
+    console.warn('Failed to save custom website configs:', e);
+  }
+  return getCustomWebsiteConfigs();
+};
+
 // Storage file uploader wrapper function
 export const uploadImage = async (
   bucket: 'product_images' | 'category_images' | 'banner_images' | 'website_assets',

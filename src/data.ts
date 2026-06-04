@@ -321,6 +321,51 @@ export const DEFAULT_REVIEWS: Review[] = [
     comment: 'Exquisite designs and premium customer packaging. The Ivory Pearl Organza fabric feels luxurious and comfortable. Perfect on-time delivery.',
     date: 'May 28, 2026',
     verified: true
+  },
+  {
+    id: 'rev_4',
+    name: 'Sana Ahmed',
+    location: 'Peshawar, KPK',
+    rating: 5,
+    comment: 'Incredible craftsmanship! The embroidery and tilla detail on my luxury pret outfit is beyond my expectation. Beautiful custom packaging too.',
+    date: 'May 30, 2026',
+    verified: true
+  },
+  {
+    id: 'rev_5',
+    name: 'Ayesha Omer',
+    location: 'Faisalabad, Punjab',
+    rating: 5,
+    comment: 'Simply beautiful! Extremely breathable fabric, and the sewing is perfect. Highly responsive helpline on WhatsApp.',
+    date: 'June 02, 2026',
+    verified: true
+  },
+  {
+    id: 'rev_6',
+    name: 'Fatima Lodhi',
+    location: 'Multan, Punjab',
+    rating: 5,
+    comment: 'Highly professional service. The order arrived exactly as shown. Got so many compliments at the mehndi ceremony!',
+    date: 'June 03, 2026',
+    verified: true
+  },
+  {
+    id: 'rev_7',
+    name: 'Hina Jamil',
+    location: 'Quetta, Balochistan',
+    rating: 5,
+    comment: 'Outfits by Mushq has become my favorite brand. The premium jacquard dupattas and details are exquisite, looking forward to the winter editions.',
+    date: 'June 04, 2026',
+    verified: true
+  },
+  {
+    id: 'rev_8',
+    name: 'Nida Yasir',
+    location: 'Sialkot, Punjab',
+    rating: 5,
+    comment: 'Absolute masterpiece! The velvet peshwas stitching length is correct to the inch, and the premium box shipping keeps the outfit pristine.',
+    date: 'June 04, 2026',
+    verified: true
   }
 ];
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, X, Search, Heart, ShoppingBag, Landmark, Settings, Sparkles, MessageSquare } from 'lucide-react';
 import { Category } from '../types';
+import { getCustomWebsiteConfigs } from '../storage';
 
 interface HeaderProps {
   categories: Category[];
@@ -37,6 +38,7 @@ export default function Header({
   storeName = 'Mushq Outfits',
   whatsappNumber = '+92 302 0038010'
 }: HeaderProps) {
+  const webConfigs = getCustomWebsiteConfigs();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const handleNavClick = (slug: string) => {
@@ -53,11 +55,15 @@ export default function Header({
   return (
     <header id="site-header" className="sticky top-0 z-50 bg-cream-50/85 backdrop-blur-md border-b border-cream-150 transition-all duration-300">
       {/* Top micro-banner */}
-      <div className="bg-emerald-950 text-[#fff] py-2 px-3 text-center text-[9px] sm:text-xs font-medium tracking-[0.1em] sm:tracking-[0.18em] uppercase flex items-center justify-center gap-1.5 sm:gap-2 leading-tight break-all">
-        <Sparkles className="w-3 h-3 text-gold-400 animate-pulse shrink-0" />
-        <span className="truncate max-w-[85vw] sm:max-w-none">LUXURY FESTIVE STITCHING & NATIONWIDE FREE SHIPPING ON INQUIRIES</span>
-        <span className="hidden md:inline">| DIRECT WHATSAPP RESPONSE {whatsappNumber}</span>
-      </div>
+      {webConfigs.announcementEnabled && (
+        <div className="bg-emerald-950 text-[#fff] py-2 px-3 text-center text-[9px] sm:text-xs font-medium tracking-[0.1em] sm:tracking-[0.18em] uppercase flex items-center justify-center gap-1.5 sm:gap-2 leading-tight break-all transition-all duration-300">
+          <Sparkles className="w-3 h-3 text-gold-400 animate-pulse shrink-0" />
+          <span className="truncate max-w-[85vw] sm:max-w-none uppercase">
+            {webConfigs.announcementText || 'LUXURY FESTIVE STITCHING & NATIONWIDE FREE SHIPPING ON INQUIRIES'}
+          </span>
+          <span className="hidden md:inline">| DIRECT WHATSAPP RESPONSE {whatsappNumber}</span>
+        </div>
+      )}
 
       {/* Main navigation area */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 md:h-24 grid grid-cols-3 items-center relative w-full overflow-hidden">
@@ -133,30 +139,51 @@ export default function Header({
 
       {/* Desktop Menu links bar */}
       <nav className="hidden md:flex items-center justify-center border-t border-cream-150 py-3 bg-cream-50/40">
-        <div className="flex items-center gap-8 text-[10px] lg:text-xs font-bold tracking-[0.22em] uppercase text-emerald-950">
-          <button
-            onClick={() => onChangeView('home')}
-            className={`hover:text-gold-600 transition-colors cursor-pointer ${currentView === 'home' ? 'text-gold-600 border-b-2 border-gold-400 pb-1.5' : 'pb-1.5'}`}
-          >
-            Home
-          </button>
-          
-          <button
-            onClick={() => handleNavClick('all')}
-            className={`hover:text-gold-600 transition-colors cursor-pointer ${currentView === 'shop' && activeCategory === 'all' ? 'text-gold-600 border-b-2 border-gold-400 pb-1.5' : 'pb-1.5'}`}
-          >
-            All Collections
-          </button>
+        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-[10px] lg:text-xs font-bold tracking-[0.22em] uppercase text-emerald-950 px-4">
+          {webConfigs.menuItems && webConfigs.menuItems.length > 0 ? (
+            webConfigs.menuItems.map((menuItem) => {
+              const isActive = menuItem.type === 'home'
+                ? currentView === 'home'
+                : menuItem.type === 'all_collections'
+                  ? currentView === 'shop' && activeCategory === 'all'
+                  : currentView === 'shop' && activeCategory === menuItem.categorySlug;
+              
+              const handleClick = () => {
+                if (menuItem.type === 'home') {
+                  onChangeView('home');
+                } else if (menuItem.type === 'all_collections') {
+                  handleNavClick('all');
+                } else if (menuItem.type === 'category' && menuItem.categorySlug) {
+                  handleNavClick(menuItem.categorySlug);
+                }
+              };
 
-          {categories.slice(0, 5).map((category) => (
-            <button
-              key={category.id}
-              onClick={() => handleNavClick(category.slug)}
-              className={`hover:text-gold-600 transition-colors cursor-pointer ${currentView === 'shop' && activeCategory === category.slug ? 'text-gold-600 border-b-2 border-gold-400 pb-1.5' : 'pb-1.5'}`}
-            >
-              {category.name}
-            </button>
-          ))}
+              return (
+                <button
+                  key={menuItem.id}
+                  onClick={handleClick}
+                  className={`hover:text-gold-600 transition-colors cursor-pointer pb-1 ${isActive ? 'text-gold-650 border-b-2 border-gold-400' : ''}`}
+                >
+                  {menuItem.name}
+                </button>
+              );
+            })
+          ) : (
+            <>
+              <button
+                onClick={() => onChangeView('home')}
+                className={`hover:text-gold-600 transition-colors cursor-pointer pb-1 ${currentView === 'home' ? 'text-gold-650 border-b-2 border-gold-400' : ''}`}
+              >
+                Home
+              </button>
+              <button
+                onClick={() => handleNavClick('all')}
+                className={`hover:text-gold-600 transition-colors cursor-pointer pb-1 ${currentView === 'shop' && activeCategory === 'all' ? 'text-gold-650 border-b-2 border-gold-400' : ''}`}
+              >
+                All Collections
+              </button>
+            </>
+          )}
         </div>
       </nav>
 
