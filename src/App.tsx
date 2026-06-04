@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Heart, Trash2, Eye, Sparkles, ChevronLeft, ChevronRight, 
   MessageSquare, Star, ArrowRight, Instagram, Facebook, Mail, 
@@ -18,6 +18,13 @@ import ProductDetails from './components/ProductDetails';
 import AdminPanel from './components/AdminPanel';
 
 export default function App() {
+  // Brand initial loading state
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  
+  // Refs
+  const categoryTrackRef = useRef<HTMLDivElement>(null);
+
   // Database active states
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -83,8 +90,16 @@ export default function App() {
 
   useEffect(() => {
     const init = async () => {
+      const startTime = Date.now();
       await incrementVisitors(); // Increment operational visits logged
       await refreshDatabase();
+      
+      const elapsed = Date.now() - startTime;
+      const minDuration = 1800; // Let the beautiful monogram reveal animate for 1.8 seconds minimum
+      if (elapsed < minDuration) {
+        await new Promise(resolve => setTimeout(resolve, minDuration - elapsed));
+      }
+      setIsInitialLoading(false);
     };
     init();
 
@@ -100,6 +115,40 @@ export default function App() {
       setCart(JSON.parse(savedCart));
     }
   }, []);
+
+  // Page navigation & filter transition indicators
+  useEffect(() => {
+    if (isInitialLoading) return;
+    setLoadingProgress(25);
+    const timer1 = setTimeout(() => setLoadingProgress(65), 100);
+    const timer2 = setTimeout(() => setLoadingProgress(100), 220);
+    const timer3 = setTimeout(() => setLoadingProgress(0), 450);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, [currentView, activeCategory, isInitialLoading]);
+
+  // Automated Horizontal Categories scroll timer
+  useEffect(() => {
+    if (isInitialLoading || categories.length === 0) return;
+    const interval = setInterval(() => {
+      const el = categoryTrackRef.current;
+      if (el) {
+        // Scroll right. If near the end, wrap smoothly back to 0
+        const cardWidth = 220 + 16; // width + gap
+        if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 20) {
+          el.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          el.scrollBy({ left: cardWidth, behavior: 'smooth' });
+        }
+      }
+    }, 4500); // Exquisite transition every 4.5 seconds
+
+    return () => clearInterval(interval);
+  }, [isInitialLoading, categories]);
 
   // Slider automated transition timer
   useEffect(() => {
@@ -250,6 +299,75 @@ export default function App() {
   return (
     <div className="flex flex-col min-h-screen bg-cream-50 selection:bg-gold-500/35 selection:text-emerald-950 font-sans">
       
+      {/* Dynamic Top Navigation Progress Bar */}
+      {loadingProgress > 0 && (
+        <div 
+          className="fixed top-0 left-0 h-[3px] bg-gradient-to-r from-emerald-600 via-gold-400 to-gold-500 z-[999] transition-all duration-300 ease-out" 
+          style={{ width: `${loadingProgress}%` }}
+        />
+      )}
+
+      {/* Luxury Initial Brand Intro Screen */}
+      <AnimatePresence>
+        {isInitialLoading && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 bg-emerald-950 z-[9999] flex flex-col items-center justify-center text-[#fff]"
+          >
+            <div className="text-center space-y-6 px-6">
+              {/* Luxury Monogram Reveal */}
+              <motion.div
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 1, ease: 'easeOut' }}
+                className="relative inline-block"
+              >
+                {/* Golden rotating/shimmering halo ring */}
+                <div className="absolute -inset-4 border border-gold-400/25 rounded-full animate-[spin_10s_linear_infinite]" />
+                <div className="absolute -inset-1 border border-dashed border-gold-300/10 rounded-full animate-[spin_18s_linear_infinite]" />
+                
+                {/* Monogram Box */}
+                <div className="w-20 h-20 bg-emerald-900 border border-gold-350/40 rounded-full flex items-center justify-center shadow-2xl relative">
+                  <span className="font-serif text-3xl font-bold text-gold-400 tracking-wider font-semibold">M</span>
+                </div>
+              </motion.div>
+
+              {/* Brand Lettering */}
+              <div className="space-y-2">
+                <motion.h1
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.8 }}
+                  className="font-serif text-2xl md:text-3xl font-extrabold tracking-[0.2em] text-cream-50 uppercase"
+                >
+                  Outfits by Mushq
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.7 }}
+                  transition={{ delay: 0.6, duration: 1 }}
+                  className="text-[9px] font-sans font-bold uppercase tracking-[0.3em] text-gold-300"
+                >
+                  Sartorial Luxury Concierge • Stitched & Unstitched
+                </motion.p>
+              </div>
+
+              {/* Luxury Progress Bar Indicator */}
+              <div className="w-56 h-[2px] bg-neutral-800 rounded-full mx-auto overflow-hidden relative">
+                <motion.div
+                  initial={{ left: '-100%' }}
+                  animate={{ left: '100%' }}
+                  transition={{ repeat: Infinity, duration: 1.4, ease: 'easeInOut' }}
+                  className="absolute top-0 bottom-0 w-1/2 bg-gradient-to-r from-transparent via-gold-400 to-transparent"
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Visual Header */}
       <Header
         categories={categories}
@@ -390,38 +508,76 @@ export default function App() {
               </p>
             </section>
 
-            {/* FEATURED CATEGORIES EDITORIAL INDEX GRID */}
-            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <h3 className="text-[10px] font-bold tracking-[0.3em] text-gold-700 uppercase mb-8 text-center font-sans">
-                Featured Boutique Divisions
-              </h3>
+            {/* FEATURED CATEGORIES EDITORIAL INDEX SLIDER */}
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+              <div className="flex items-center justify-between mb-8 select-none">
+                <div className="w-1/3 h-[1px] bg-gradient-to-r from-transparent to-gold-400" />
+                <h3 className="text-[12px] font-bold tracking-[0.35em] text-gold-700 uppercase text-center font-sans shrink-0 px-2">
+                  Featured Boutique Divisions
+                </h3>
+                <div className="w-1/3 h-[1px] bg-gradient-to-l from-transparent to-gold-400" />
+              </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 border border-cream-150 bg-[#fff] shadow-xs">
-                {categories.map((cat, idx) => (
-                  <div
-                    key={cat.id}
-                    onClick={() => {
-                      setActiveCategory(cat.slug);
-                      setCurrentView('shop');
-                    }}
-                    className="p-6 flex flex-col justify-between min-h-[150px] border-r border-b last:border-r-0 border-cream-150 hover:bg-[#064e3b]/5 transition-all duration-300 cursor-pointer group"
-                  >
-                    <div className="flex justify-between items-start">
-                      <span className="text-[9px] text-[#064e3b]/50 tracking-widest font-mono">0{idx + 1}</span>
-                      <div className="w-9 h-9 border border-cream-150 overflow-hidden opacity-80 group-hover:opacity-100 transition-all">
-                        <img
-                          src={cat.image}
-                          alt={cat.name}
-                          referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
+              <div className="relative group/carousel">
+                {/* Desktop navigation arrows */}
+                <button
+                  onClick={() => categoryTrackRef.current?.scrollBy({ left: -240, behavior: 'smooth' })}
+                  className="absolute -left-5 top-1/2 transform -translate-y-1/2 bg-[#fff]/95 border border-cream-200 hover:border-gold-500 text-emerald-950 w-10 h-10 rounded-full shadow-md z-30 opacity-0 group-hover/carousel:opacity-100 focus:opacity-100 hover:scale-105 transition-all duration-300 cursor-pointer hidden md:flex items-center justify-center hover:bg-cream-50"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft className="w-5 h-5 text-gold-600" />
+                </button>
+                
+                <button
+                  onClick={() => categoryTrackRef.current?.scrollBy({ left: 240, behavior: 'smooth' })}
+                  className="absolute -right-5 top-1/2 transform -translate-y-1/2 bg-[#fff]/95 border border-cream-200 hover:border-gold-500 text-emerald-950 w-10 h-10 rounded-full shadow-md z-30 opacity-0 group-hover/carousel:opacity-100 focus:opacity-100 hover:scale-105 transition-all duration-300 cursor-pointer hidden md:flex items-center justify-center hover:bg-cream-50"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRight className="w-5 h-5 text-gold-600" />
+                </button>
+
+                {/* Horizontal scrollable row wrapper */}
+                <div
+                  ref={categoryTrackRef}
+                  className="flex gap-4 overflow-x-auto snap-x snap-mandatory py-3 px-1.5 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  {categories.map((cat, idx) => (
+                    <div
+                      key={cat.id}
+                      onClick={() => {
+                        setActiveCategory(cat.slug);
+                        setCurrentView('shop');
+                      }}
+                      className="flex-shrink-0 w-[180px] md:w-[220px] snap-start bg-[#fff] border border-cream-150 rounded-xl overflow-hidden shadow-xs hover:shadow-md hover:border-gold-300 transition-all duration-300 p-5 cursor-pointer flex flex-col justify-between min-h-[190px] group relative"
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] text-[#064e3b]/40 tracking-wider font-mono font-bold">0{idx + 1}</span>
+                        <div className="w-12 h-12 border border-cream-150 overflow-hidden rounded-full shadow-xs opacity-90 group-hover:opacity-100 group-hover:border-gold-500 transition-all">
+                          <img
+                            src={cat.image}
+                            alt={cat.name}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                        </div>
                       </div>
+                      
+                      <div className="mt-6 flex flex-col">
+                        <h4 className="font-serif text-[14px] text-emerald-950 font-bold group-hover:text-gold-600 transition-colors uppercase tracking-wide">
+                          {cat.name}
+                        </h4>
+                        <span className="text-[10px] text-neutral-400 mt-1 uppercase font-semibold font-sans tracking-wider opacity-0 group-hover:opacity-100 transform translate-y-1 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-1 animate-in fade-in slide-in-from-bottom-1 duration-150">
+                          <span>Browse Closet</span>
+                          <span>→</span>
+                        </span>
+                      </div>
+                      
+                      {/* Premium card corner decorations */}
+                      <div className="absolute top-0 right-0 w-8 h-8 border-t border-r border-transparent group-hover:border-gold-300/30 rounded-tr-xl transition-all" />
+                      <div className="absolute bottom-0 left-0 w-8 h-8 border-b border-l border-transparent group-hover:border-gold-300/30 rounded-bl-xl transition-all" />
                     </div>
-                    <h3 className="font-serif text-[13px] text-[#064e3b] font-bold group-hover:text-gold-600 tracking-wide transition-colors mt-8 uppercase">
-                      {cat.name}
-                    </h3>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </section>
 

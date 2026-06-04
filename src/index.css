@@ -26,15 +26,27 @@
 @layer base {
   body {
     background-color: #faf9f5; /* Premium luxury warm ivory paper color */
-    color: #171717;
+    color: #1a1a1a;
     font-family: var(--font-sans);
+    font-size: 16px;
+    font-weight: 500; /* Medium font weight for luxury body text */
+    line-height: 1.625;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
+    letter-spacing: 0.015em;
+  }
+  
+  p {
+    font-weight: 500;
+    line-height: 1.65;
+    color: #2e2e2e;
   }
   
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-serif);
-    letter-spacing: -0.01em;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #064e3b;
   }
 }
 
