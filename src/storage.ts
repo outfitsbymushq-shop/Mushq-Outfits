@@ -6,17 +6,20 @@ import { DEFAULT_PRODUCTS, DEFAULT_CATEGORIES, DEFAULT_BANNERS, DEFAULT_REVIEWS 
 export const seedIfEmpty = async () => {
   try {
     // 1. Categories
-    const { data: cats, error: catErr } = await supabase.from('categories').select('id');
-    if (!catErr && (!cats || cats.length === 0)) {
-      console.log('Categories empty in Supabase, seeding defaults...');
+    const { data: cats, error: catErr } = await supabase.from('categories').select('slug');
+    if (!catErr) {
+      const existingSlugs = new Set((cats || []).map(c => c.slug));
       for (const cat of DEFAULT_CATEGORIES) {
-        await supabase.from('categories').insert({
-          name: cat.name,
-          slug: cat.slug,
-          description: cat.description || '',
-          image_url: cat.image || '',
-          status: 'active'
-        });
+        if (!existingSlugs.has(cat.slug)) {
+          console.log(`Seeding missing category: ${cat.name}`);
+          await supabase.from('categories').insert({
+            name: cat.name,
+            slug: cat.slug,
+            description: cat.description || '',
+            image_url: cat.image || '',
+            status: 'active'
+          });
+        }
       }
     }
 

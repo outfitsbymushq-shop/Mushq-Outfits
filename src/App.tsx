@@ -31,6 +31,55 @@ export default function App() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
 
+  // Redesigned Category slider dragging & auto-scroll states
+  const [isCatDragging, setIsCatDragging] = useState(false);
+  const catStartX = useRef(0);
+  const catScrollLeft = useRef(0);
+  const [isCatHovered, setIsCatHovered] = useState(false);
+
+  // Mouse drag event listeners
+  const handleCatMouseDown = (e: React.MouseEvent) => {
+    const el = categoryTrackRef.current;
+    if (!el) return;
+    setIsCatDragging(true);
+    catStartX.current = e.pageX - el.offsetLeft;
+    catScrollLeft.current = el.scrollLeft;
+  };
+
+  const handleCatMouseMove = (e: React.MouseEvent) => {
+    if (!isCatDragging) return;
+    e.preventDefault();
+    const el = categoryTrackRef.current;
+    if (!el) return;
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - catStartX.current) * 1.5; // Sensitivity scroll speed
+    el.scrollLeft = catScrollLeft.current - walk;
+  };
+
+  const handleCatMouseUpOrLeave = () => {
+    setIsCatDragging(false);
+  };
+
+  // Automated gentle auto-carousel advance
+  useEffect(() => {
+    if (isCatDragging || isCatHovered || isInitialLoading || categories.length === 0) return;
+    
+    const interval = setInterval(() => {
+      const el = categoryTrackRef.current;
+      if (!el) return;
+      
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (el.scrollLeft >= maxScroll - 10) {
+        // Soft loop reset back to beginning
+        el.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        el.scrollBy({ left: 260, behavior: 'smooth' });
+      }
+    }, 4500); // Gentle loop transition cycle rate
+    
+    return () => clearInterval(interval);
+  }, [isCatDragging, isCatHovered, isInitialLoading, categories]);
+
   // Page routing
   const [currentView, setCurrentView] = useState<'home' | 'shop' | 'details' | 'admin'>('home');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -95,7 +144,7 @@ export default function App() {
       await refreshDatabase();
       
       const elapsed = Date.now() - startTime;
-      const minDuration = 1800; // Let the beautiful monogram reveal animate for 1.8 seconds minimum
+      const minDuration = 800; // Fast premium brand adaptive threshold (800ms minimum)
       if (elapsed < minDuration) {
         await new Promise(resolve => setTimeout(resolve, minDuration - elapsed));
       }
@@ -509,74 +558,111 @@ export default function App() {
             </section>
 
             {/* FEATURED CATEGORIES EDITORIAL INDEX SLIDER */}
-            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative mb-12">
               <div className="flex items-center justify-between mb-8 select-none">
-                <div className="w-1/3 h-[1px] bg-gradient-to-r from-transparent to-gold-400" />
-                <h3 className="text-[12px] font-bold tracking-[0.35em] text-gold-700 uppercase text-center font-sans shrink-0 px-2">
+                <div className="w-12 md:w-1/4 h-[1px] bg-gradient-to-r from-transparent to-gold-400" />
+                <h3 className="text-[11px] md:text-[13px] font-bold tracking-[0.35em] text-gold-700 uppercase text-center font-sans shrink-0 px-4">
                   Featured Boutique Divisions
                 </h3>
-                <div className="w-1/3 h-[1px] bg-gradient-to-l from-transparent to-gold-400" />
+                <div className="w-12 md:w-1/4 h-[1px] bg-gradient-to-l from-transparent to-gold-400" />
               </div>
               
-              <div className="relative group/carousel">
-                {/* Desktop navigation arrows */}
+              <div 
+                className="relative group/carousel px-1"
+                onMouseEnter={() => setIsCatHovered(true)}
+                onMouseLeave={() => setIsCatHovered(false)}
+              >
+                {/* Desktop navigation arrows - Elegant styled circles */}
                 <button
-                  onClick={() => categoryTrackRef.current?.scrollBy({ left: -240, behavior: 'smooth' })}
-                  className="absolute -left-5 top-1/2 transform -translate-y-1/2 bg-[#fff]/95 border border-cream-200 hover:border-gold-500 text-emerald-950 w-10 h-10 rounded-full shadow-md z-30 opacity-0 group-hover/carousel:opacity-100 focus:opacity-100 hover:scale-105 transition-all duration-300 cursor-pointer hidden md:flex items-center justify-center hover:bg-cream-50"
-                  aria-label="Scroll left"
+                  type="button"
+                  onClick={() => categoryTrackRef.current?.scrollBy({ left: -280, behavior: 'smooth' })}
+                  className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 bg-[#fff]/95 border border-gold-200 hover:border-gold-500 text-emerald-950 w-11 h-11 rounded-full shadow-lg z-30 opacity-100 lg:opacity-0 group-hover/carousel:opacity-100 focus:opacity-100 hover:scale-105 active:scale-95 transition-all duration-350 cursor-pointer flex items-center justify-center hover:bg-cream-50"
+                  aria-label="Scroll boutique categories left"
                 >
-                  <ChevronLeft className="w-5 h-5 text-gold-600" />
+                  <ChevronLeft className="w-5 h-5 text-gold-650" />
                 </button>
                 
                 <button
-                  onClick={() => categoryTrackRef.current?.scrollBy({ left: 240, behavior: 'smooth' })}
-                  className="absolute -right-5 top-1/2 transform -translate-y-1/2 bg-[#fff]/95 border border-cream-200 hover:border-gold-500 text-emerald-950 w-10 h-10 rounded-full shadow-md z-30 opacity-0 group-hover/carousel:opacity-100 focus:opacity-100 hover:scale-105 transition-all duration-300 cursor-pointer hidden md:flex items-center justify-center hover:bg-cream-50"
-                  aria-label="Scroll right"
+                  type="button"
+                  onClick={() => categoryTrackRef.current?.scrollBy({ left: 280, behavior: 'smooth' })}
+                  className="absolute -right-3 lg:-right-6 top-1/2 transform -translate-y-1/2 bg-[#fff]/95 border border-gold-200 hover:border-gold-500 text-emerald-950 w-11 h-11 rounded-full shadow-lg z-30 opacity-100 lg:opacity-0 group-hover/carousel:opacity-100 focus:opacity-100 hover:scale-105 active:scale-95 transition-all duration-350 cursor-pointer flex items-center justify-center hover:bg-cream-50"
+                  aria-label="Scroll boutique categories right"
                 >
-                  <ChevronRight className="w-5 h-5 text-gold-600" />
+                  <ChevronRight className="w-5 h-5 text-gold-650" />
                 </button>
 
-                {/* Horizontal scrollable row wrapper */}
+                {/* Horizontal scrollable row wrapper with drag support */}
                 <div
                   ref={categoryTrackRef}
-                  className="flex gap-4 overflow-x-auto snap-x snap-mandatory py-3 px-1.5 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  onMouseDown={handleCatMouseDown}
+                  onMouseMove={handleCatMouseMove}
+                  onMouseUp={handleCatMouseUpOrLeave}
+                  onMouseLeave={handleCatMouseUpOrLeave}
+                  className={`flex gap-5 overflow-x-auto snap-x snap-mandatory py-4 px-1 scroll-smooth select-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+                    isCatDragging ? 'cursor-grabbing' : 'cursor-grab'
+                  }`}
+                  style={{ WebkitOverflowScrolling: 'touch' }}
                 >
-                  {categories.map((cat, idx) => (
-                    <div
-                      key={cat.id}
-                      onClick={() => {
-                        setActiveCategory(cat.slug);
-                        setCurrentView('shop');
-                      }}
-                      className="flex-shrink-0 w-[180px] md:w-[220px] snap-start bg-[#fff] border border-cream-150 rounded-xl overflow-hidden shadow-xs hover:shadow-md hover:border-gold-300 transition-all duration-300 p-5 cursor-pointer flex flex-col justify-between min-h-[190px] group relative"
-                    >
-                      <div className="flex justify-between items-start">
-                        <span className="text-[10px] text-[#064e3b]/40 tracking-wider font-mono font-bold">0{idx + 1}</span>
-                        <div className="w-12 h-12 border border-cream-150 overflow-hidden rounded-full shadow-xs opacity-90 group-hover:opacity-100 group-hover:border-gold-500 transition-all">
+                  {categories.map((cat, idx) => {
+                    const styleCount = products.filter(p => p.category === cat.slug).length;
+                    return (
+                      <div
+                        key={cat.id}
+                        onClick={() => {
+                          if (isCatDragging) return; // Prevent navigations when dragging
+                          setActiveCategory(cat.slug);
+                          setCurrentView('shop');
+                        }}
+                        className="flex-shrink-0 w-[210px] sm:w-[240px] md:w-[270px] aspect-[3/4.2] snap-start bg-emerald-950 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-500 cursor-pointer relative group"
+                      >
+                        {/* Bleed Background image with dark/warm brand tint overlay */}
+                        <div className="absolute inset-0 z-0">
                           <img
                             src={cat.image}
                             alt={cat.name}
                             referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            className="w-full h-full object-cover transition-transform duration-1000 ease-out scale-100 group-hover:scale-110 filter brightness-[0.75] group-hover:brightness-[0.65]"
                           />
+                          <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/95 via-transparent to-black/20" />
+                        </div>
+                        
+                        {/* Premium Luxury Inner Frame on Hover */}
+                        <div className="absolute inset-2.5 border border-gold-300/0 group-hover:border-gold-300/40 rounded-xl z-20 transition-all duration-500 pointer-events-none scale-102 group-hover:scale-100" />
+                        
+                        {/* Card metadata content */}
+                        <div className="absolute inset-0 z-10 p-5 md:p-6 flex flex-col justify-between items-stretch">
+                          {/* Top: Item counter and accent line */}
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] tracking-widest text-gold-450 font-mono">
+                              C0{idx + 1}
+                            </span>
+                            <span className="w-1.5 h-1.5 bg-gold-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          </div>
+                          
+                          {/* Bottom Layout: Title and description count */}
+                          <div className="flex flex-col gap-1.5 text-left transform translate-y-2 group-hover:translate-y-0 transition-all duration-500">
+                            <h4 className="font-serif text-[16px] md:text-[18px] text-cream-50 font-semibold uppercase tracking-wide group-hover:text-gold-300 transition-colors">
+                              {cat.name}
+                            </h4>
+                            
+                            {/* Short Category description or count */}
+                            <p className="text-[10px] text-neutral-300 font-light line-clamp-1 group-hover:text-cream-100 transition-colors">
+                              {cat.description || 'Prestige design fabric details.'}
+                            </p>
+                            
+                            <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-cream-100/10">
+                              <span className="text-[9px] uppercase tracking-widest font-sans font-bold text-gold-440">
+                                {styleCount > 0 ? `${styleCount} Designs Released` : 'Bespoke Collection'}
+                              </span>
+                              <span className="text-gold-300 text-xs transform -translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 font-mono">
+                                Buy →
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      
-                      <div className="mt-6 flex flex-col">
-                        <h4 className="font-serif text-[14px] text-emerald-950 font-bold group-hover:text-gold-600 transition-colors uppercase tracking-wide">
-                          {cat.name}
-                        </h4>
-                        <span className="text-[10px] text-neutral-400 mt-1 uppercase font-semibold font-sans tracking-wider opacity-0 group-hover:opacity-100 transform translate-y-1 group-hover:translate-y-0 transition-all duration-300 flex items-center gap-1 animate-in fade-in slide-in-from-bottom-1 duration-150">
-                          <span>Browse Closet</span>
-                          <span>→</span>
-                        </span>
-                      </div>
-                      
-                      {/* Premium card corner decorations */}
-                      <div className="absolute top-0 right-0 w-8 h-8 border-t border-r border-transparent group-hover:border-gold-300/30 rounded-tr-xl transition-all" />
-                      <div className="absolute bottom-0 left-0 w-8 h-8 border-b border-l border-transparent group-hover:border-gold-300/30 rounded-bl-xl transition-all" />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </section>
@@ -1274,6 +1360,10 @@ export default function App() {
                       e.preventDefault();
                       if (!cartName.trim()) {
                         alert('Please fill in your name to initialize custom checkout.');
+                        return;
+                      }
+                      if (!cartAddress.trim()) {
+                        alert('Please fill in your complete shipping address to proceed.');
                         return;
                       }
 

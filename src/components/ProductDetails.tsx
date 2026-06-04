@@ -25,6 +25,7 @@ export default function ProductDetails({
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
   
   // New review form states
   const [revName, setRevName] = useState('');
@@ -61,7 +62,11 @@ export default function ProductDetails({
   const handlePlaceOrder = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName.trim()) {
-      alert('Please provide your name to generate the WhatsApp order sheet.');
+      alert('Please fill in your name to generate the WhatsApp order.');
+      return;
+    }
+    if (!customerAddress.trim()) {
+      alert('Please fill in your complete shipping address to generate the WhatsApp order.');
       return;
     }
 
@@ -70,18 +75,18 @@ export default function ProductDetails({
     
     // Construct WhatsApp message content precisely in the requested template
     let message = `Assalamualaikum,
-
+ 
 I would like to order this product.
-
+ 
 Product Name:
 ${product.title}
-
+ 
 Price:
 ${priceText}
-
+ 
 Product ID:
 ${product.sku}
-
+ 
 Product Link:
 ${productUrl}`;
 
@@ -99,6 +104,7 @@ ${productUrl}`;
     if (customerPhone) {
       message += `\n- WhatsApp Contact: ${customerPhone}`;
     }
+    message += `\n- Shipping Address: ${customerAddress}`;
 
     // Encode text
     const encodedText = encodeURIComponent(message);
@@ -436,10 +442,11 @@ ${productUrl}`;
             )}
 
             {/* Customer Details */}
-            <div className="space-y-3.5 mb-5 mb-5.5">
+            <div className="space-y-3.5 mb-6">
               <div>
-                <label className="block text-xs font-bold text-neutral-700 tracking-wide uppercase mb-1.5">
-                  2. Full Name *
+                <label className="block text-xs font-bold text-neutral-700 tracking-wide uppercase mb-1.5 flex items-center gap-1.5">
+                  <span>2. Full Name</span>
+                  <span className="text-rose-600 font-extrabold">*</span>
                 </label>
                 <input
                   type="text"
@@ -447,20 +454,35 @@ ${productUrl}`;
                   required
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full bg-[#fff] border border-cream-200 rounded-lg px-3.5 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800"
+                  className="w-full bg-[#fff] border border-cream-200 rounded-lg px-3.5 py-3 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800 font-medium"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-neutral-700 tracking-wide uppercase mb-1.5">
-                  3. Phone Number (Optional)
+                  3. Phone Number / WhatsApp (Optional)
                 </label>
                 <input
                   type="tel"
                   placeholder="e.g. +92 300 1234567"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="w-full bg-[#fff] border border-cream-200 rounded-lg px-3.5 py-2.5 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800"
+                  className="w-full bg-[#fff] border border-cream-200 rounded-lg px-3.5 py-3 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800 font-sans font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 tracking-wide uppercase mb-1.5 flex items-center gap-1.5 font-sans">
+                  <span>4. Complete Shipping Address</span>
+                  <span className="text-rose-600 font-extrabold">*</span>
+                </label>
+                <textarea
+                  placeholder="e.g. House No 42-B, Street 15, Block 5, Clifton, Karachi"
+                  required
+                  rows={2}
+                  value={customerAddress}
+                  onChange={(e) => setCustomerAddress(e.target.value)}
+                  className="w-full bg-[#fff] border border-cream-200 rounded-lg px-3.5 py-3 text-xs text-neutral-800 focus:outline-none focus:border-emerald-800 resize-none font-sans font-medium"
                 />
               </div>
             </div>
@@ -479,18 +501,18 @@ ${productUrl}`;
                 <button
                   type="button"
                   onClick={handleAddToCartBtn}
-                  className="w-full bg-[#fff] hover:bg-cream-50 border-2 border-emerald-950 text-emerald-950 font-bold uppercase py-3.5 rounded-lg text-xs tracking-[0.18em] flex items-center justify-center gap-3 shadow-md hover:shadow-lg transition-all cursor-pointer"
+                  className="w-full min-h-[46px] bg-[#fff] hover:bg-cream-50 active:scale-[0.98] border-2 border-emerald-950 text-emerald-950 font-bold uppercase py-3.5 px-4 rounded-lg text-[11px] sm:text-xs tracking-wider sm:tracking-[0.18em] flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer leading-tight select-none"
                 >
-                  <ShoppingBag className="w-4 h-4 text-emerald-900" />
+                  <ShoppingBag className="w-4 h-4 text-emerald-900 shrink-0" />
                   <span>ADD TO LUXURY BAG</span>
                 </button>
 
                 <button
                   type="submit"
                   id="btn-whatsapp-order"
-                  className="w-full bg-emerald-900 hover:bg-emerald-950 active:scale-[0.98] text-[#fff] font-bold uppercase py-4 rounded-lg text-xs tracking-[0.18em] flex items-center justify-center gap-3 shadow-md hover:shadow-lg transition-all cursor-pointer"
+                  className="w-full min-h-[46px] bg-emerald-900 hover:bg-emerald-950 active:scale-[0.98] text-[#fff] font-bold uppercase py-3.5 px-4 rounded-lg text-[11px] sm:text-xs tracking-wider sm:tracking-[0.18em] flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer leading-tight select-none"
                 >
-                  <MessageSquare className="w-4.5 h-4.5 text-gold-400" />
+                  <MessageSquare className="w-4 h-4 text-gold-400 shrink-0" />
                   <span>ORDER ON WHATSAPP SECURELY</span>
                 </button>
               </div>
@@ -672,10 +694,10 @@ ${productUrl}`;
             <button
               type="submit"
               disabled={revSubmitting}
-              className={`w-full text-center text-[10px] font-extrabold uppercase tracking-widest py-2.5 rounded transition-all cursor-pointer ${
+              className={`w-full min-h-[44px] px-4 py-3 text-center text-[10px] font-extrabold uppercase tracking-widest rounded transition-all cursor-pointer flex items-center justify-center ${
                 revSubmitting
                   ? 'bg-neutral-300 text-neutral-500 cursor-not-allowed'
-                  : 'bg-emerald-950 text-cream-50 hover:bg-emerald-900 border border-emerald-950'
+                  : 'bg-emerald-950 text-cream-50 hover:bg-emerald-900 border border-emerald-950 shadow-xs'
               }`}
             >
               {revSubmitting ? 'Submitting Review...' : 'Verify & Send Review'}

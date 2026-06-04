@@ -49,6 +49,62 @@ export const DEFAULT_CATEGORIES: Category[] = [
     slug: 'unstitched',
     description: 'Design it your way with premium fabrics, bordered panels and custom patchworks.',
     image: 'https://images.unsplash.com/photo-1590075865003-e48277afd558?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'cat_pret',
+    name: 'Luxury Pret',
+    slug: 'luxury-pret',
+    description: 'Contemporary, ready-to-wear luxury kurtas and matching formal separates.',
+    image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'cat_casual',
+    name: 'Casual Wear',
+    slug: 'casual-wear',
+    description: 'Effortless, premium daily wear with delicate details and comfortable cottons.',
+    image: 'https://images.unsplash.com/photo-1509319117193-57bab727e09d?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'cat_evening',
+    name: 'Evening Wear',
+    slug: 'evening-wear',
+    description: 'Dramatic modern heights, custom drapes, and flowing luxury silhouettes.',
+    image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'cat_bridal',
+    name: 'Bridal Collection',
+    slug: 'bridal-collection',
+    description: 'Bespoke handcrafted masterworks built with heritage tilla and panni embroideries.',
+    image: 'https://images.unsplash.com/photo-1594552072238-b8a33785b261?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'cat_exclusive',
+    name: 'Exclusive Designs',
+    slug: 'exclusive-designs',
+    description: 'Extravagant creations, custom tailored in highly limited, numbered editions.',
+    image: 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'cat_velvet',
+    name: 'Velvet Peshwas',
+    slug: 'velvet-peshwas',
+    description: 'Regal silhouette dresses handcrafted with exquisite borders and pearl handcrafting.',
+    image: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'cat_organza',
+    name: 'Organza Tunics',
+    slug: 'organza-tunics',
+    description: 'Light translucent overlays of fine silk with intricate floral threadwork.',
+    image: 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=800&q=80'
+  },
+  {
+    id: 'cat_festive',
+    name: 'Festive Stitched',
+    slug: 'festive-stitched',
+    description: 'Pre-stitched festive wear combinations designed for grand Eid events and dinners.',
+    image: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=800&q=80'
   }
 ];
 
