@@ -4,6 +4,94 @@ import { Product, Inquiry, Review } from '../types';
 import { getCustomWebsiteConfigs } from '../storage';
 import { useCurrency } from '../currencyContext';
 
+// Universal parser to extract video ID from standard YouTube links, Shorts, and Share links
+function getYouTubeId(url: string | undefined | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  
+  // 1. YouTube Shorts link
+  if (trimmed.includes('/shorts/')) {
+    const parts = trimmed.split('/shorts/');
+    if (parts[1]) {
+      return parts[1].split(/[?#&]/)[0];
+    }
+  }
+  
+  // 2. Standard watch URL (watch?v=) Or mobile (m.youtube.com)
+  if (trimmed.includes('v=')) {
+    const parts = trimmed.split('v=');
+    if (parts[1]) {
+      return parts[1].split(/[?#&]/)[0];
+    }
+  }
+  
+  // 3. Short Share link (youtu.be/)
+  if (trimmed.includes('youtu.be/')) {
+    const parts = trimmed.split('youtu.be/');
+    if (parts[1]) {
+      return parts[1].split(/[?#&]/)[0];
+    }
+  }
+  
+  // 4. Embed link
+  if (trimmed.includes('/embed/')) {
+    const parts = trimmed.split('/embed/');
+    if (parts[1]) {
+      return parts[1].split(/[?#&]/)[0];
+    }
+  }
+
+  // Fallback RegExp to capture 11-char ID from generic links
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = trimmed.match(regExp);
+  if (match && match[2] && match[2].length === 11) {
+    return match[2];
+  }
+  
+  return null;
+}
+
+// Custom parser to split string-oriented sizing configurations into structured row objects for HTML table representation
+function parseSizingChart(text: string) {
+  try {
+    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    const rows: Array<{ size: string; chest?: string; waist?: string; shoulder?: string; length?: string }> = [];
+    
+    for (const line of lines) {
+      if (!line.includes(':')) continue;
+      const parts = line.split(':');
+      const size = parts[0].trim();
+      const rest = parts.slice(1).join(':');
+      
+      const measurements = rest.split('|');
+      let chest = '';
+      let waist = '';
+      let shoulder = '';
+      let length = '';
+      
+      for (const m of measurements) {
+        const mParts = m.split(':');
+        if (mParts.length === 2) {
+          const key = mParts[0].trim().toLowerCase();
+          const val = mParts[1].trim();
+          if (key.includes('chest')) chest = val;
+          else if (key.includes('waist')) waist = val;
+          else if (key.includes('shoulder')) shoulder = val;
+          else if (key.includes('length')) length = val;
+        }
+      }
+      
+      if (size && (chest || waist || shoulder || length)) {
+        rows.push({ size, chest, waist, shoulder, length });
+      }
+    }
+    
+    return rows.length > 0 ? rows : null;
+  } catch (error) {
+    return null;
+  }
+}
+
 interface ProductDetailsProps {
   product: Product;
   onGoBack: () => void;
@@ -27,6 +115,7 @@ export default function ProductDetails({
   const [selectedSize, setSelectedSize] = useState<string>(product.sizeInfo?.[0] || 'Unstitched');
   const [selectedColor, setSelectedColor] = useState<string>(product.colors?.[0] || '');
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isInlineVideoPlaying, setIsInlineVideoPlaying] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -236,14 +325,14 @@ ${productUrl}`;
         </div>
 
         {/* RIGHT COLUMN: Interactive Details (6 cols on lg) */}
-        <div className="lg:col-span-6 flex flex-col gap-6 justify-between">
+        <div className="lg:col-span-6 flex flex-col gap-5 justify-between">
           <div>
-            {/* Title */}
+            {/* 1. Title */}
             <h1 className="text-xl md:text-2xl font-bold uppercase tracking-wide text-neutral-900 mt-2 mb-1 font-sans">
               {product.title.toUpperCase()}
             </h1>
 
-            {/* Price Tags */}
+            {/* 2. Price / Sale Price */}
             <div className="flex items-center gap-3 mb-1 select-none text-sm md:text-base font-sans font-semibold text-emerald-950">
               {hasSale ? (
                 <>
@@ -262,109 +351,96 @@ ${productUrl}`;
             </div>
 
             {/* SKU Tag inline below price matching mockup image */}
-            <div className="text-[11px] text-neutral-400 font-sans tracking-wide uppercase mb-5">
+            <div className="text-[11px] text-neutral-400 font-sans tracking-wide uppercase mb-3.5">
               SKU: {product.sku || 'N/A'}
             </div>
 
-            {/* EMBEDDED DIRECT VIDEO PLAYER WALKTHROUGH */}
-            {product.videoUrl && (
-              <div className="my-5 bg-emerald-950 text-[#fff] rounded-xl overflow-hidden shadow-md border border-gold-300/20 p-4">
-                <div className="flex items-center justify-between gap-1.5 mb-2.5">
-                  <div className="flex items-center gap-1.5">
-                    <Video className="w-3.5 h-3.5 text-gold-400 shrink-0" />
-                    <span className="text-[10px] tracking-wider uppercase text-gold-300 font-extrabold font-sans">
-                      Boutique Video Walkthrough
-                    </span>
-                  </div>
-                  <span className="text-[8px] uppercase tracking-widest text-[#fff]/60">Inline Playback</span>
-                </div>
-                <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-neutral-800 bg-[#000] shadow-sm">
-                  {(() => {
-                    let id = '';
-                    const url = product.videoUrl;
-                    if (url.includes('youtu.be/')) {
-                      id = url.split('youtu.be/')[1]?.split('?')[0] || '';
-                    } else if (url.includes('youtube.com/watch')) {
-                      id = url.split('v=')[1]?.split('&')[0] || '';
-                    } else if (url.includes('youtube.com/embed/')) {
-                      id = url.split('embed/')[1]?.split('?')[0] || '';
-                    }
-                    const embedUrl = id ? `https://www.youtube.com/embed/${id}` : null;
-                    
-                    return embedUrl ? (
-                      <iframe
-                        src={`${embedUrl}?rel=0`}
-                        title="Embedded Runway Presentation Walkthrough"
-                        frameBorder="0"
-                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                        className="absolute inset-0 w-full h-full"
-                      ></iframe>
-                    ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 p-4 text-center">
-                        <Video className="w-8 h-8 text-neutral-600 animate-pulse" />
-                        <p className="text-[10px] text-neutral-400">Video available:</p>
-                        <a 
-                          href={product.videoUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-gold-400 hover:underline break-all"
-                        >
-                          {product.videoUrl}
-                        </a>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-            )}
-
-            {/* Product Narrative description block */}
-            <p className="text-sm text-neutral-600 leading-relaxed mb-6 font-sans">
-              {product.description}
-            </p>
-
-            {/* Interactive Tabbed documentation row */}
-            <div className="border-t border-b border-cream-100 py-2 my-6">
-              <div className="flex gap-4 border-b border-cream-100/50 pb-2 mb-3 text-xs font-bold tracking-wider uppercase text-neutral-400">
-                <button
-                  onClick={() => setActiveTab('fabric')}
-                  className={`pb-1 cursor-pointer hover:text-emerald-950 ${activeTab === 'fabric' ? 'text-emerald-950 border-b-2 border-gold-500' : ''}`}
-                >
-                  🧵 Fabric Details
-                </button>
-                <button
-                  onClick={() => setActiveTab('sizing')}
-                  className={`pb-1 cursor-pointer hover:text-emerald-950 ${activeTab === 'sizing' ? 'text-emerald-950 border-b-2 border-gold-500' : ''}`}
-                >
-                  📐 Sizing Charts
-                </button>
-                <button
-                  onClick={() => setActiveTab('delivery')}
-                  className={`pb-1 cursor-pointer hover:text-emerald-950 ${activeTab === 'delivery' ? 'text-emerald-950 border-b-2 border-gold-500' : ''}`}
-                >
-                  📦 Delivery Info
-                </button>
-              </div>
-
-              {activeTab === 'fabric' && (
-                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn whitespace-pre-line">
-                  {webConfigs.globalFabricDetails || `Primary Fabric: ${product.fabric}\n\nThread Craftsmanship:\nFine quality handcraft, zari embellishments, tilla borders, gota work, and matching sequins.\n\nComponents:\n3-piece complete dress including matching trousers and premium dupatta.`}
-                </div>
-              )}
-
-              {activeTab === 'sizing' && (
-                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn whitespace-pre-line">
-                  {webConfigs.globalSizingCharts || `S  : Chest: 36" | Waist: 30" | Shoulder: 14.0" | Shirt Length: 39"\nM  : Chest: 40" | Waist: 34" | Shoulder: 15.0" | Shirt Length: 40"\nL  : Chest: 44" | Waist: 38" | Shoulder: 16.0" | Shirt Length: 41"\nXL : Chest: 48" | Waist: 42" | Shoulder: 17.5" | Shirt Length: 42"`}
-                </div>
-              )}
-
-              {activeTab === 'delivery' && (
-                <div className="text-xs text-neutral-600 space-y-2 py-1 animated fadeIn whitespace-pre-line">
-                  {webConfigs.globalDeliveryInfo || `Premium Delivery Service:\nStandard transit requires 2-4 working days across Pakistan. International shipping is dispatched via high-speed premium FedEx/DHL routing (5-8 business days).\n\nTailoring Completion:\nStitched garments have an artisan crafting queue of 12-14 business days from confirmation.`}
-                </div>
-              )}
+            {/* 3. Worldwide Delivery Label */}
+            <div className="flex items-center gap-2 mb-4 bg-emerald-50/50 border border-emerald-100/60 px-3 py-2 rounded-xl max-w-fit shadow-2xs">
+              <Globe className="w-4 h-4 text-emerald-800 shrink-0" />
+              <span className="text-[10.5px] font-bold text-emerald-900 uppercase tracking-widest font-sans flex items-center gap-1.5 leading-none">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block font-sans"></span>
+                Worldwide Express Courier Delivery Available
+              </span>
             </div>
+
+            {/* 4. Product Video (Compact Beautiful Supporting Inline Section) */}
+            {product.videoUrl && (() => {
+              const videoId = getYouTubeId(product.videoUrl);
+              return videoId ? (
+                <div className="my-4.5 border border-cream-200 bg-[#fbfbfa] rounded-xl overflow-hidden shadow-3xs transition-all duration-300">
+                  {!isInlineVideoPlaying ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsInlineVideoPlaying(true)}
+                      className="w-full flex items-center justify-between p-2 text-left group cursor-pointer transition-all hover:bg-cream-50/45 animate-in fade-in duration-300"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-15 h-9.5 rounded-md overflow-hidden bg-neutral-100 border border-cream-150 shrink-0 shadow-3xs">
+                          <img 
+                            src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} 
+                            alt="Walkthrough Preview" 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-neutral-900/15 flex items-center justify-center group-hover:bg-neutral-900/25 transition-all w-full h-full">
+                            <div className="bg-emerald-900 text-gold-400 p-1.5 rounded-full shadow-xs group-hover:scale-110 transition-transform duration-300 text-center">
+                              <svg className="w-2.5 h-2.5 fill-current mx-auto" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" stroke="currentColor" fill="currentColor" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-extrabold text-gold-600 uppercase tracking-wider block font-sans mb-0.5 animate-pulse">
+                            Boutique Video Walkthrough
+                          </span>
+                          <span className="text-[11px] font-bold text-emerald-950 font-serif leading-tight">
+                            View Fabric & Quality Walkthrough
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mr-1 py-1 px-3 bg-emerald-950 text-gold-400 font-sans text-[9px] font-bold uppercase tracking-wider rounded-full hover:bg-emerald-900 transition-colors hidden sm:block shadow-3xs select-none">
+                        Play Video
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="p-3.5 animate-in fade-in duration-300">
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-cream-155">
+                        <span className="text-[9.5px] font-extrabold text-gold-600 uppercase tracking-widest flex items-center gap-1 font-sans">
+                          <Video className="w-3.5 h-3.5" /> Boutique Walks Video
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsInlineVideoPlaying(false)}
+                          className="text-[9.5px] font-bold text-neutral-400 hover:text-rose-600 uppercase tracking-wider cursor-pointer"
+                        >
+                          ✕ Hide Player
+                        </button>
+                      </div>
+                      <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-cream-150 bg-[#000] shadow-sm max-h-[195px] sm:max-h-[225px]">
+                        <iframe
+                          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
+                          title="Boutique Walkthrough Video Player"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          className="absolute inset-0 w-full h-full"
+                        ></iframe>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="my-4 p-3 bg-neutral-50/70 border border-neutral-200/55 rounded-xl flex items-center gap-2 text-xs text-neutral-500">
+                  <Video className="w-3.5 h-3.5 text-neutral-450 shrink-0" />
+                  <span>Walkthrough Link: </span>
+                  <a href={product.videoUrl} target="_blank" rel="noopener noreferrer" className="text-gold-600 underline font-semibold hover:text-gold-700 truncate max-w-xs">{product.videoUrl}</a>
+                </div>
+              );
+            })()}
           </div>
 
           {/* WHATSAPP ORDER SHEET FORM */}
@@ -560,6 +636,104 @@ ${productUrl}`;
               </div>
             )}
           </form>
+
+          {/* 6. Product Description narrative & tabs at bottom */}
+          <div className="mt-4 border-t border-cream-100 pt-4">
+            <p className="text-sm text-neutral-600 leading-relaxed mb-4 font-sans">
+              {product.description}
+            </p>
+
+            {/* Interactive Sizing, Fabric, and Delivery tabs */}
+            <div className="border-t border-b border-cream-100 py-1 my-5">
+              <div className="flex gap-4 border-b border-[#faf9f5] pb-2 mb-3 text-xs font-bold tracking-wider uppercase text-neutral-400">
+                <button
+                  onClick={() => setActiveTab('fabric')}
+                  className={`pb-1 cursor-pointer hover:text-emerald-950 ${activeTab === 'fabric' ? 'text-emerald-950 border-b-2 border-gold-500 font-extrabold' : ''}`}
+                  type="button"
+                >
+                  🧵 Fabric Details
+                </button>
+                <button
+                  onClick={() => setActiveTab('sizing')}
+                  className={`pb-1 cursor-pointer hover:text-emerald-950 ${activeTab === 'sizing' ? 'text-emerald-950 border-b-2 border-gold-500 font-extrabold' : ''}`}
+                  type="button"
+                >
+                  📐 Sizing Charts
+                </button>
+                <button
+                  onClick={() => setActiveTab('delivery')}
+                  className={`pb-1 cursor-pointer hover:text-emerald-950 ${activeTab === 'delivery' ? 'text-emerald-950 border-b-2 border-gold-500 font-extrabold' : ''}`}
+                  type="button"
+                >
+                  📦 Delivery Info
+                </button>
+              </div>
+
+              {activeTab === 'fabric' && (
+                <div className="text-xs text-neutral-605 space-y-2 py-1 animated fadeIn whitespace-pre-line font-medium leading-relaxed font-sans">
+                  {webConfigs.globalFabricDetails || `Primary Fabric: ${product.fabric}\n\nThread Craftsmanship:\nFine quality handcraft, zari embellishments, tilla borders, gota work, and matching sequins.\n\nComponents:\n3-piece complete dress including matching trousers and premium dupatta.`}
+                </div>
+              )}
+
+              {activeTab === 'sizing' && (() => {
+                const sizingText = webConfigs.globalSizingCharts || `S  : Chest: 36" | Waist: 30" | Shoulder: 14.0" | Shirt Length: 39"\nM  : Chest: 40" | Waist: 34" | Shoulder: 15.0" | Shirt Length: 40"\nL  : Chest: 44" | Waist: 38" | Shoulder: 16.0" | Shirt Length: 41"\nXL : Chest: 48" | Waist: 42" | Shoulder: 17.5" | Shirt Length: 42"`;
+                const parsedRows = parseSizingChart(sizingText) || [
+                  { size: 'S', chest: '36"', waist: '30"', shoulder: '14.0"', length: '39"' },
+                  { size: 'M', chest: '40"', waist: '34"', shoulder: '15.0"', length: '40"' },
+                  { size: 'L', chest: '44"', waist: '38"', shoulder: '16.0"', length: '41"' },
+                  { size: 'XL', chest: '48"', waist: '42"', shoulder: '17.5"', length: '42"' },
+                ];
+
+                return (
+                  <div className="space-y-4 py-2 animated fadeIn font-sans text-xs">
+                    {/* Visual Tabular Sizing Chart */}
+                    <div className="overflow-x-auto rounded-xl border border-cream-200 shadow-3xs bg-white">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-cream-50/70 border-b border-cream-150 text-emerald-950 font-extrabold uppercase tracking-widest text-[10px] md:text-xs">
+                            <th className="py-2.5 px-3 md:px-4 text-center w-14">Size</th>
+                            <th className="py-2.5 px-3 md:px-4">Chest</th>
+                            <th className="py-2.5 px-3 md:px-4">Waist</th>
+                            <th className="py-2.5 px-3 md:px-4">Shoulder</th>
+                            <th className="py-2.5 px-3 md:px-4">Length</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-cream-100 text-neutral-700 font-medium text-[11px] md:text-xs">
+                          {parsedRows.map((row, idx) => (
+                            <tr key={idx} className="hover:bg-cream-50/20 transition-colors">
+                              <td className="py-2.5 px-3 md:px-4 text-center font-extrabold text-emerald-900 bg-cream-50/25 font-mono text-[12px]">
+                                {row.size}
+                              </td>
+                              <td className="py-2.5 px-3 md:px-4">{row.chest || '—'}</td>
+                              <td className="py-2.5 px-3 md:px-4">{row.waist || '—'}</td>
+                              <td className="py-2.5 px-3 md:px-4">{row.shoulder || '—'}</td>
+                              <td className="py-2.5 px-3 md:px-4">{row.length || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Sizing description list/text below */}
+                    <div className="pt-1.5 border-t border-cream-100/50">
+                      <span className="text-[9.5px] font-bold text-neutral-400 uppercase tracking-widest block mb-2">
+                        Sizing Guides & Reference Text
+                      </span>
+                      <div className="text-[11px] text-neutral-600 font-medium leading-relaxed bg-[#fbfbfa] p-3 rounded-xl border border-cream-150 whitespace-pre-line">
+                        {sizingText}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {activeTab === 'delivery' && (
+                <div className="text-xs text-neutral-605 space-y-2 py-1 animated fadeIn whitespace-pre-line font-medium leading-relaxed font-sans">
+                  {webConfigs.globalDeliveryInfo || `Premium Delivery Service:\nStandard transit requires 2-4 working days across Pakistan. International shipping is dispatched via high-speed premium FedEx/DHL routing (5-8 business days).\n\nTailoring Completion:\nStitched garments have an artisan crafting queue of 12-14 business days from confirmation.`}
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Customer Trust indicator */}
           <div className="flex justify-around items-center text-neutral-400 text-[10px] uppercase font-bold tracking-widest mt-4">
