@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Menu, X, Search, Heart, ShoppingBag, Landmark, Settings, Sparkles, MessageSquare } from 'lucide-react';
+import { Menu, X, Search, Heart, ShoppingBag, Landmark, Settings, Sparkles, MessageSquare, Globe } from 'lucide-react';
 import { Category } from '../types';
 import { getCustomWebsiteConfigs } from '../storage';
+import { useCurrency } from '../currencyContext';
 
 interface HeaderProps {
   categories: Category[];
@@ -38,8 +39,12 @@ export default function Header({
   storeName = 'Mushq Outfits',
   whatsappNumber = '+92 302 0038010'
 }: HeaderProps) {
+  const { selectedCurrencyCode, currencyConfig, setCurrencyCode } = useCurrency();
   const webConfigs = getCustomWebsiteConfigs();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [currencyMenuOpen, setCurrencyMenuOpen] = useState(false);
+
+  const currentCurrency = currencyConfig.currencies.find(c => c.code === selectedCurrencyCode) || { flag: '🇵🇰', code: 'PKR', symbol: 'Rs.' };
 
   const handleNavClick = (slug: string) => {
     onSelectCategory(slug);
@@ -103,18 +108,58 @@ export default function Header({
           </span>
         </div>
 
-        {/* Column 3: Right (Wishlist & Cart) */}
-        <div className="flex items-center justify-end gap-1 sm:gap-3 md:gap-5 z-15 shrink-0">
+        {/* Column 3: Right (Wishlist & Cart & Currency) */}
+        <div className="flex items-center justify-end gap-1.5 sm:gap-3 md:gap-4.5 z-15 shrink-0">
+          
+          {/* Multi-Currency Dropdown */}
+          <div className="relative inline-block text-left" id="currency-switcher-container">
+            <button
+              onClick={() => setCurrencyMenuOpen(!currencyMenuOpen)}
+              className="flex items-center gap-1 px-1.5 py-1 text-[10px] md:text-xs font-bold text-emerald-950 uppercase tracking-wider rounded border border-cream-250/70 hover:bg-cream-100/40 hover:border-gold-300 bg-white/50 transition-all cursor-pointer select-none"
+              type="button"
+              id="btn-currency-select"
+            >
+              <span className="text-sm select-none shrink-0 leading-none">{currentCurrency.flag}</span>
+              <span className="font-mono text-[9px] md:text-xs text-neutral-805 select-none">{currentCurrency.code}</span>
+              <span className="text-[7.5px] select-none text-neutral-400">▼</span>
+            </button>
+            {currencyMenuOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40 bg-transparent" 
+                  onClick={() => setCurrencyMenuOpen(false)} 
+                />
+                <div className="absolute right-0 mt-1 pb-1 w-36 max-h-56 overflow-y-auto bg-white border border-cream-205 rounded shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-150 py-1.5 custom-scrollbar">
+                  {currencyConfig.currencies.filter(c => c.isEnabled).map((c) => (
+                    <button
+                      key={c.code}
+                      onClick={() => {
+                        setCurrencyCode(c.code);
+                        setCurrencyMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-xs font-semibold font-sans hover:bg-cream-50/70 transition-colors uppercase cursor-pointer text-neutral-700"
+                      type="button"
+                    >
+                      <span className="text-xs shrink-0 select-none">{c.flag}</span>
+                      <span className="font-mono shrink-0 text-[10px] tracking-tight">{c.code}</span>
+                      <span className="text-[8px] text-neutral-400 font-normal select-none uppercase tracking-widest truncate block">{c.symbol}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
           <button
             onClick={onOpenWishlist}
             id="btn-wishlist-drawer"
-            className="relative p-2 text-emerald-950 hover:text-gold-600 transition-colors cursor-pointer text-xs font-bold uppercase tracking-wider flex items-center gap-1 select-none"
+            className="relative p-1.5 text-emerald-950 hover:text-gold-600 transition-colors cursor-pointer text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center gap-1 select-none font-sans"
             aria-label="Wishlist"
           >
-            <Heart className="w-4.5 h-4.5 text-neutral-800 hover:text-rose-600" />
-            <span className="hidden md:inline">Wishlist ({wishlistCount})</span>
+            <Heart className="w-4 h-4 text-neutral-800 hover:text-rose-600" />
+            <span className="hidden md:inline">Likes ({wishlistCount})</span>
             {wishlistCount > 0 && (
-              <span className="absolute -top-1 -right-1 md:-top-1.5 md:-right-1.5 bg-gold-600 text-[#fff] text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+              <span className="absolute -top-1 -right-0.5 bg-gold-600 text-[#fff] text-[8px] font-extrabold w-3.5 h-3.5 rounded-full flex items-center justify-center shadow-xs">
                 {wishlistCount}
               </span>
             )}
@@ -123,13 +168,13 @@ export default function Header({
           <button
             onClick={onOpenCart}
             id="btn-cart-drawer"
-            className="relative p-2 text-emerald-950 hover:text-gold-600 transition-colors cursor-pointer text-xs font-bold uppercase tracking-wider flex items-center gap-1 select-none"
+            className="relative p-1.5 text-emerald-950 hover:text-gold-600 transition-colors cursor-pointer text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center gap-1 select-none font-sans"
             aria-label="Cart"
           >
-            <ShoppingBag className="w-4.5 h-4.5 text-emerald-900" />
+            <ShoppingBag className="w-4 h-4 text-emerald-900" />
             <span className="hidden md:inline">Cart ({cartCount})</span>
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 md:-top-1.5 md:-right-1.5 bg-emerald-900 text-[#fff] text-[9px] font-extrabold w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-xs">
+              <span className="absolute -top-1 -right-0.5 bg-emerald-900 text-[#fff] text-[8px] font-extrabold w-3.5 h-3.5 rounded-full flex items-center justify-center shadow-xs">
                 {cartCount}
               </span>
             )}

@@ -17,8 +17,10 @@ import Footer from './components/Footer';
 import ProductCard from './components/ProductCard';
 import ProductDetails from './components/ProductDetails';
 import AdminPanel from './components/AdminPanel';
+import { useCurrency } from './currencyContext';
 
 export default function App() {
+  const { formatPrice } = useCurrency();
   const webConfigs = getCustomWebsiteConfigs();
   // Brand initial loading state
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -976,7 +978,7 @@ export default function App() {
                 <div>
                   <div className="flex justify-between items-baseline mb-2">
                     <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Price ceiling</label>
-                    <span className="font-mono text-xs font-bold text-emerald-950">Rs. {priceRange.toLocaleString()}</span>
+                    <span className="font-mono text-xs font-bold text-emerald-950">{formatPrice(priceRange)}</span>
                   </div>
                   <input
                     type="range"
@@ -988,8 +990,8 @@ export default function App() {
                     className="w-full h-1 bg-cream-100 rounded-lg appearance-none cursor-pointer accent-emerald-900"
                   />
                   <div className="flex justify-between text-[10px] text-neutral-400 mt-1">
-                    <span>Rs. 5,000</span>
-                    <span>Rs. 30,000</span>
+                    <span>{formatPrice(5000)}</span>
+                    <span>{formatPrice(30000)}</span>
                   </div>
                 </div>
 
@@ -1112,7 +1114,7 @@ export default function App() {
                           <span className="text-[10px] italic text-[#ab8215] font-semibold block">{item.fabric}</span>
                         </div>
                         <div className="flex items-center justify-between border-t border-cream-50 pt-1.5 mt-1">
-                          <span className="font-mono font-bold text-emerald-950">Rs. {(item.salePrice || item.price).toLocaleString()}</span>
+                          <span className="font-mono font-bold text-emerald-950">{formatPrice(item.salePrice || item.price)}</span>
                           <div className="flex gap-2">
                             <button
                               onClick={() => {
@@ -1376,7 +1378,7 @@ export default function App() {
                           </div>
 
                           <div className="flex items-center justify-between border-t border-cream-50 pt-2 mt-2">
-                            <span className="font-mono font-bold text-emerald-950 text-xs">Rs. {(price * item.quantity).toLocaleString()}</span>
+                            <span className="font-mono font-bold text-emerald-950 text-xs">{formatPrice(price * item.quantity)}</span>
                             
                             {/* Quantity buttons */}
                             <div className="flex items-center border border-cream-150 bg-cream-50/50 rounded overflow-hidden">
@@ -1410,7 +1412,7 @@ export default function App() {
                   <div className="flex justify-between items-center mb-4 text-xs font-serif font-bold text-emerald-950 border-b border-cream-150 pb-3">
                     <span className="uppercase tracking-widest text-[10px]">Estimated Cart Subtotal:</span>
                     <span className="text-sm font-mono tracking-normal">
-                      Rs. {cart.reduce((total, item) => total + ((item.product.salePrice || item.product.price) * item.quantity), 0).toLocaleString()}
+                      {formatPrice(cart.reduce((total, item) => total + ((item.product.salePrice || item.product.price) * item.quantity), 0))}
                     </span>
                   </div>
 
@@ -1449,11 +1451,11 @@ export default function App() {
                           message += `\n   - Measurements: Bust: ${item.customMeasurements.bust}", Shirt: ${item.customMeasurements.shirtLength}", Waist: ${item.customMeasurements.waist}", Trouser: ${item.customMeasurements.trouserLength}"`;
                         }
                         message += `\n   - Qty: ${item.quantity}`;
-                        message += `\n   - Item Price: Rs. ${price.toLocaleString()}`;
+                        message += `\n   - Item Price: ${formatPrice(price)}`;
                         message += `\n   - Link: https://outfitsbymushq.netlify.app/product/${item.product.id}`;
                       });
                       
-                      message += `\n\n=============================\n\n*Grand Subtotal:* Rs. ${totalCartValue.toLocaleString()}\n\nThank you!`;
+                      message += `\n\n=============================\n\n*Grand Subtotal:* ${formatPrice(totalCartValue)}\n\nThank you!`;
 
                       // Encode message
                       const encodedText = encodeURIComponent(message);
@@ -1465,7 +1467,7 @@ export default function App() {
                           customerName: cartName,
                           customerPhone: cartPhone || 'WhatsApp Client',
                           productTitle: `${item.product.title} (Size: ${item.selectedSize})`,
-                          price: `Rs. ${(item.product.salePrice || item.product.price).toLocaleString()} x ${item.quantity}`,
+                          price: `${formatPrice(item.product.salePrice || item.product.price)} x ${item.quantity}`,
                           sku: item.product.sku,
                           productLink: `https://outfitsbymushq.netlify.app/product/${item.product.id}`
                         })

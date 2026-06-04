@@ -1,6 +1,7 @@
 import React from 'react';
 import { Eye, Heart, Sparkles, MessageSquare } from 'lucide-react';
 import { Product } from '../types';
+import { useCurrency } from '../currencyContext';
 
 interface ProductCardProps {
   key?: React.Key | string | number;
@@ -16,12 +17,8 @@ export default function ProductCard({
   onToggleWishlist,
   isWishlisted
 }: ProductCardProps) {
+  const { formatPrice } = useCurrency();
   const hasSale = !!product.salePrice && product.salePrice < product.price;
-  
-  // Format PKR currency
-  const formatPrice = (amount: number) => {
-    return `Rs. ${amount.toLocaleString('en-PK')}`;
-  };
 
   return (
     <div 

@@ -19,6 +19,8 @@ import {
   CustomWebsiteConfigs, CustomMenuItem
 } from '../storage';
 import { supabase } from '../supabaseClient';
+import { useCurrency } from '../currencyContext';
+import { CurrencyInfo } from '../currencyService';
 
 interface AdminPanelProps {
   onDatabaseUpdate: () => void;
@@ -45,6 +47,14 @@ Standard Sizing Reference (Inches):
 Actual product color may slightly vary due to lighting conditions, photography, and screen display settings.`;
 
 export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPanelProps) {
+  // Currency Settings states
+  const { currencyConfig, updateCurrencyConfig, triggerManualRefresh, isLoadingRates } = useCurrency();
+  const [newCurrCode, setNewCurrCode] = useState('');
+  const [newCurrSymbol, setNewCurrSymbol] = useState('');
+  const [newCurrFlag, setNewCurrFlag] = useState('');
+  const [newCurrCountry, setNewCurrCountry] = useState('');
+  const [newCurrRate, setNewCurrRate] = useState(1.0);
+
   // Authentication states
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState('');
@@ -2623,7 +2633,288 @@ export default function AdminPanel({ onDatabaseUpdate, onLogoutAdmin }: AdminPan
                     </div>
                   </div>
                 </div>
+              </div>
 
+              {/* 5. Currency & Exchange Settings Section */}
+              <div className="border border-cream-150 bg-white rounded-xl p-5 space-y-6">
+                <div>
+                  <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-widest flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-gold-600" />
+                    <span>Multi-Currency & Exchange Settings</span>
+                  </h3>
+                  <p className="text-[10px] text-neutral-450 mt-1">
+                    Manage the customer currency selector, configure exchange rate factors (relative to PKR base currency), toggles for automatic rates alignment, and add custom countries.
+                  </p>
+                </div>
+
+                {/* Sub-section: General Switcher Settings */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-cream-50/50 p-4 rounded-xl border border-cream-100">
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-600 uppercase mb-2">Default Currency</label>
+                    <select
+                      value={currencyConfig.defaultCurrencyCode}
+                      onChange={(e) => {
+                        updateCurrencyConfig({
+                          ...currencyConfig,
+                          defaultCurrencyCode: e.target.value
+                        });
+                        showToast(`Default shop currency updated to ${e.target.value}`, 'success');
+                      }}
+                      className="w-full bg-white border border-cream-205 rounded px-3 py-1.5 text-xs text-neutral-800"
+                    >
+                      {currencyConfig.currencies.map(c => (
+                        <option key={c.code} value={c.code}>{c.flag} {c.code} - {c.country}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-600 uppercase mb-2">Exchange Rates Auto-Sync</label>
+                    <div className="flex items-center justify-between gap-2 p-1.5 bg-white border border-cream-205 rounded">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-semibold text-neutral-700">Daily Automated Refresh</span>
+                        <span className="text-[9px] text-neutral-400">Fetch daily from live exchange rates API</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={currencyConfig.autoUpdateDaily}
+                        onChange={(e) => {
+                          updateCurrencyConfig({
+                            ...currencyConfig,
+                            autoUpdateDaily: e.target.checked
+                          });
+                          showToast(`Exchange rates auto-update is now ${e.target.checked ? 'ENABLED' : 'DISABLED'}`, 'info');
+                        }}
+                        className="w-4 h-4 accent-emerald-900 rounded cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rates API Status Header */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#e6f1ed] p-3 rounded-lg border border-emerald-100">
+                  <div className="text-[10px] font-medium text-emerald-900">
+                    <span className="font-semibold block font-sans">Exchange Rates Feed Alignment Status</span>
+                    <span className="text-neutral-500 font-normal">Last Synchronized: {new Date(currencyConfig.lastUpdated).toLocaleString()}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const success = await triggerManualRefresh();
+                      if (success) {
+                        showToast('Live exchange rates updated successfully!', 'success');
+                      } else {
+                        showToast('Failed to contact live rates API, using cached fallback.', 'info');
+                      }
+                    }}
+                    disabled={isLoadingRates}
+                    className="px-3 py-1.5 bg-emerald-950 hover:bg-emerald-900 disabled:bg-[#ccc] text-white text-[9.5px] font-bold tracking-wider uppercase rounded transition-all flex items-center gap-1 cursor-pointer shadow-xs shrink-0 self-stretch sm:self-center justify-center"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isLoadingRates ? 'animate-spin' : ''}`} />
+                    <span>{isLoadingRates ? 'Updating...' : 'Force Live API Refetch'}</span>
+                  </button>
+                </div>
+
+                {/* Currency Table / Checklist */}
+                <div className="space-y-3">
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Configure Enabled Currencies & Manual Rates</label>
+                  <div className="border border-cream-150 rounded-xl overflow-hidden bg-white shadow-3xs">
+                    <table className="w-full border-collapse text-left text-xs text-neutral-700 font-sans">
+                      <thead>
+                        <tr className="bg-cream-100/50 border-b border-cream-150 text-[10px] text-neutral-500 font-bold uppercase tracking-wider">
+                          <th className="p-3">Country / Flag</th>
+                          <th className="p-3">Code</th>
+                          <th className="p-3">Symbol</th>
+                          <th className="p-3">Exchange Rate (vs 1 PKR)</th>
+                          <th className="p-3 text-center">Status</th>
+                          <th className="p-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-cream-105">
+                        {currencyConfig.currencies.map((c, idx) => {
+                          const isBase = c.code === 'PKR';
+                          return (
+                            <tr key={c.code} className="hover:bg-cream-50/30 transition-colors">
+                              <td className="p-3 font-semibold text-neutral-800">
+                                <span className="text-base mr-2 select-none leading-none">{c.flag}</span>
+                                <span className="align-middle text-[11.5px]">{c.country}</span>
+                              </td>
+                              <td className="p-3 font-mono font-bold align-middle">{c.code}</td>
+                              <td className="p-3 font-mono align-middle">{c.symbol}</td>
+                              <td className="p-3 align-middle">
+                                {isBase ? (
+                                  <span className="text-neutral-400 font-semibold font-mono">1.0 (PKR Base)</span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    step="0.00001"
+                                    value={c.rate}
+                                    onChange={(e) => {
+                                      const updatedList = [...currencyConfig.currencies];
+                                      updatedList[idx].rate = Number(e.target.value) || 0;
+                                      updateCurrencyConfig({
+                                        ...currencyConfig,
+                                        currencies: updatedList
+                                      });
+                                    }}
+                                    className="px-2 py-1 border border-cream-205 rounded font-mono text-[11px] text-neutral-805 w-24 bg-white"
+                                  />
+                                )}
+                              </td>
+                              <td className="p-3 align-middle text-center">
+                                <button
+                                  type="button"
+                                  disabled={isBase}
+                                  onClick={() => {
+                                    const updatedList = [...currencyConfig.currencies];
+                                    updatedList[idx].isEnabled = !c.isEnabled;
+                                    updateCurrencyConfig({
+                                      ...currencyConfig,
+                                      currencies: updatedList
+                                    });
+                                    showToast(`${c.code} Currency ${!c.isEnabled ? 'ENABLED' : 'DISABLED'}`, 'info');
+                                  }}
+                                  className={`px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-[8.5px] ${
+                                    c.isEnabled
+                                      ? 'bg-emerald-550/15 text-emerald-800'
+                                      : 'bg-neutral-100 text-neutral-400'
+                                  }`}
+                                >
+                                  {c.isEnabled ? 'Enabled' : 'Disabled'}
+                                </button>
+                              </td>
+                              <td className="p-3 align-middle text-right">
+                                {isBase ? (
+                                  <span className="text-[10px] text-neutral-300 select-none">System Base</span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updatedList = currencyConfig.currencies.filter(curr => curr.code !== c.code);
+                                      updateCurrencyConfig({
+                                        ...currencyConfig,
+                                        currencies: updatedList
+                                      });
+                                      showToast(`Currency ${c.code} deleted successfully.`, 'error');
+                                    }}
+                                    className="p-1 hover:bg-rose-50 text-neutral-400 hover:text-rose-600 rounded cursor-pointer transition-colors"
+                                    title="Delete custom currency"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Sub-section: Add New Currency Card */}
+                <div className="p-4 bg-cream-50/30 rounded-xl border border-cream-150 text-xs">
+                  <h4 className="text-[10.5px] font-bold text-emerald-950 uppercase tracking-widest mb-3 flex items-center gap-1 font-serif">
+                    <Plus className="w-3.5 h-3.5 text-gold-600" />
+                    <span>Add Custom Currency Option</span>
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div>
+                      <label className="block text-[8.5px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Code (e.g. AED, AUD)</label>
+                      <input
+                        type="text"
+                        placeholder="USD"
+                        value={newCurrCode}
+                        onChange={(e) => setNewCurrCode(e.target.value.toUpperCase())}
+                        className="w-full bg-white border border-cream-205 rounded px-2 py-1 font-mono text-[11px] font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8.5px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Symbol (e.g. $, £)</label>
+                      <input
+                        type="text"
+                        placeholder="$"
+                        value={newCurrSymbol}
+                        onChange={(e) => setNewCurrSymbol(e.target.value)}
+                        className="w-full bg-white border border-cream-205 rounded px-2 py-1 font-mono text-[11px]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8.5px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Flag Emoji</label>
+                      <input
+                        type="text"
+                        placeholder="🇺🇸"
+                        value={newCurrFlag}
+                        onChange={(e) => setNewCurrFlag(e.target.value)}
+                        className="w-full bg-white border border-cream-205 rounded px-2 py-1 text-center"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8.5px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Country Name</label>
+                      <input
+                        type="text"
+                        placeholder="United States"
+                        value={newCurrCountry}
+                        onChange={(e) => setNewCurrCountry(e.target.value)}
+                        className="w-full bg-white border border-cream-205 rounded px-2 py-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[8.5px] font-bold text-neutral-400 uppercase tracking-wider mb-1">Exchange Rate vs PKR</label>
+                      <input
+                        type="number"
+                        step="0.00001"
+                        placeholder="0.0036"
+                        value={newCurrRate || ''}
+                        onChange={(e) => setNewCurrRate(Number(e.target.value))}
+                        className="w-full bg-white border border-cream-205 rounded px-2 py-1 font-mono text-[11px]"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end mt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newCurrCode.trim() || !newCurrSymbol.trim() || !newCurrCountry.trim()) {
+                          showToast('Please fulfill Code, Symbol, and Country parameters!', 'error');
+                          return;
+                        }
+                        const exists = currencyConfig.currencies.some(c => c.code === newCurrCode);
+                        if (exists) {
+                          showToast(`Currency code ${newCurrCode} is already registered!`, 'error');
+                          return;
+                        }
+                        const newCurr: CurrencyInfo = {
+                          code: newCurrCode,
+                          symbol: newCurrSymbol,
+                          flag: newCurrFlag || '🏳️',
+                          country: newCurrCountry,
+                          rate: newCurrRate || 1.0,
+                          isEnabled: true
+                        };
+                        updateCurrencyConfig({
+                          ...currencyConfig,
+                          currencies: [...currencyConfig.currencies, newCurr]
+                        });
+                        showToast(`Successfully registered ${newCurrCode} currency option!`, 'success');
+                        
+                        // Clear inputs
+                        setNewCurrCode('');
+                        setNewCurrSymbol('');
+                        setNewCurrFlag('');
+                        setNewCurrCountry('');
+                        setNewCurrRate(1.0);
+                      }}
+                      className="px-4 py-1.5 bg-emerald-950 hover:bg-emerald-900 text-white text-[10px] font-bold tracking-wider uppercase rounded shadow-xs cursor-pointer flex gap-1 items-center font-sans"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add to List</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-cream-150 rounded-xl p-5 space-y-4 bg-white">
                 <div className="flex justify-end pt-2 border-t border-cream-100">
                   <button
                     type="button"

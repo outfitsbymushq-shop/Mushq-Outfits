@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronLeft, MessageSquare, ShieldCheck, Sparkles, MapPin, Ruler, HelpCircle, Check, ShoppingBag, Video, Palette, Star, Globe } from 'lucide-react';
 import { Product, Inquiry, Review } from '../types';
 import { getCustomWebsiteConfigs } from '../storage';
+import { useCurrency } from '../currencyContext';
 
 interface ProductDetailsProps {
   product: Product;
@@ -20,6 +21,7 @@ export default function ProductDetails({
   reviews,
   onAddReview
 }: ProductDetailsProps) {
+  const { formatPrice } = useCurrency();
   const webConfigs = getCustomWebsiteConfigs();
   const [activeImage, setActiveImage] = useState(product.images[0]);
   const [selectedSize, setSelectedSize] = useState<string>(product.sizeInfo?.[0] || 'Unstitched');
@@ -72,7 +74,7 @@ export default function ProductDetails({
       return;
     }
 
-    const priceText = `Rs. ${currentPrice.toLocaleString()}`;
+    const priceText = formatPrice(currentPrice);
     const productUrl = `https://outfitsbymushq.netlify.app/product/${product.id}`;
     
     // Construct WhatsApp message content precisely in the requested template
@@ -242,19 +244,19 @@ ${productUrl}`;
             </h1>
 
             {/* Price Tags */}
-            <div className="flex items-center gap-3 mb-1 select-none text-sm md:text-base font-sans">
+            <div className="flex items-center gap-3 mb-1 select-none text-sm md:text-base font-sans font-semibold text-emerald-950">
               {hasSale ? (
                 <>
-                  <span className="text-neutral-500 line-through">
-                    Rs.{product.price.toLocaleString('en-PK')}
+                  <span className="text-neutral-500 line-through text-xs font-normal">
+                    {formatPrice(product.price)}
                   </span>
-                  <span className="text-red-600 font-semibold">
-                    Rs.{product.salePrice!.toLocaleString('en-PK')}
+                  <span className="text-rose-700 font-bold">
+                    {formatPrice(product.salePrice!)}
                   </span>
                 </>
               ) : (
-                <span className="text-neutral-900 font-semibold">
-                  Rs.{product.price.toLocaleString('en-PK')}
+                <span className="text-neutral-900 font-bold">
+                  {formatPrice(product.price)}
                 </span>
               )}
             </div>
